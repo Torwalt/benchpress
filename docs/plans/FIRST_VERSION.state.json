@@ -22,6 +22,29 @@
         "reasoning": 5427,
         "cache_read": 732544
       }
+    },
+    "1.2": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-16T18:57:33+02:00",
+      "agent": "opencode deepseek/deepseek-flash high",
+      "base": "4a4b5d337e43f5fdff38a55f307305a7d0218fc7",
+      "commits": [
+        "96d29ded5a23b6b155eebbb5ea75f23331ebd23c Add topic: parse front matter, title and links, edit lines"
+      ],
+      "attempts": 1,
+      "handover": "# Handover 1.2 — Topic files\n\n## What landed\n\n- `96d29de` Add topic: parse front matter, title and links, edit lines\n- New package `internal/topic`, pure text over bytes: `Parse`, `Set`, `Remove`,\n  `ValidSlug`, `Slugify`, and types `Topic`, `Field`, `Link`, `Issue`.\n- `Parse` returns the fields with their lines, the title and its line, every\n  relative link with its line, and the structural §6 issues\n  (`front-matter`, `unknown-key`, `duplicate-key`, `missing-key`, `title`).\n- Tests cover a valid topic, one case per structural issue with its line, links\n  inside and outside fences and inline code, `Set` replace/append in LF and CRLF,\n  `Remove`, byte preservation (trailing spaces, CRLF, no final newline),\n  `ValidSlug` and `Slugify`. `scripts/verify`, `go test ./...` and\n  `nix build .#benchpress` are green; no dependency change, `vendorHash` untouched.\n\n## Landmark drift\n\nNone. `docs/DESIGN.md` §3 and the `new` row of §7 are as the plan described.\n\n## Deviations from the work order\n\n- The work order fixed the functions, not the `Topic` shape. I chose\n  `Fields []Field` in file order plus `Topic.Field(key)`, `Title`/`TitleLine`,\n  `Links []Link`, and `Issue{Rule,Line,Message}`.\n- `ValidSlug` validates a **file name** including `.md`, matching §3's regex\n  literally (`drafts-strand.md` true, `drafts-strand` false). §3 calls the file\n  name the slug, but §7's CLI writes `\u003cslug\u003e.md`, so a bare slug is not valid to\n  it. A later unit can wrap it if it wants bare-slug checking.\n- Missing/unclosed front matter makes `Parse` return early with only that\n  `front-matter` issue (no fields, title or links), so a §6 `front-matter`\n  fixture yields exactly that one rule.\n- `missing-key` issues use line 1 (\"no better line\" per §6). Issues are sorted\n  by line, stably, before returning.\n- `Set`/`Remove` return `ErrNoFrontMatter` for a file without a closed front\n  matter; `Remove` is a no-op (returns a copy) when the key is absent.\n\n## What the next session must know\n\n- `Topic` carries no slug/path: `board` derives the slug from the file name and\n  passes file names to `ValidSlug`.\n- `Link.Target` is already cleaned: fragment stripped, and scheme, absolute and\n  bare-fragment links are dropped. `linkTarget` also drops a `\"title\"`.\n- Issue messages are freeform; only rule and line are contractual. If 2.3 pins\n  wording, change it here.\n- Fence handling is deliberately simple: a line with 3+ backticks or tildes\n  opens; the matching char closes when the rest is spaces. No nesting-aware\n  Markdown parsing.\n- `Set` appends with the closing `---`'s terminator, so CRLF files stay CRLF.\n\n## Open problems\n\n- `![alt](img.png)` is treated as a link (the `!` is skipped); the design does\n  not say whether images count for the `link`/`topic-link` rules.\n- Inline link parsing assumes no nested brackets in the text and no `)` in a\n  target/title; it is not a full CommonMark link parser.\n- `ValidSlug`'s file-name-vs-bare-slug reading is the main judgement call; 2.3\n  or 2.4 will show which the rest of the code needs.",
+      "session_id": "ses_eba5d8202ffekFD0fkwyH0TZRh",
+      "cost_usd": 0.032451738,
+      "harness": "opencode",
+      "elapsed_s": 215,
+      "session_s": 215,
+      "tokens": {
+        "input": 28055,
+        "output": 10777,
+        "reasoning": 30451,
+        "cache_read": 1168896
+      }
     }
   }
 }
