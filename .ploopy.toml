@@ -1,0 +1,5 @@
+plans = "docs/plans"
+context = ["AGENTS.md", "docs/DESIGN.md"]
+verify = "scripts/verify"
+test = "go test ./..."
+setup = "nix develop --command true"

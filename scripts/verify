@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+go build -o /dev/null ./...
+go vet ./...
+unformatted=$(gofumpt -l .)
+if [ -n "$unformatted" ]; then
+	echo "gofumpt would reformat:" >&2
+	echo "$unformatted" >&2
+	exit 1
+fi
