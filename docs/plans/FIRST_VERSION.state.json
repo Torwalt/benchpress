@@ -211,6 +211,29 @@
         "reasoning": 48240,
         "cache_read": 6081280
       }
+    },
+    "3.2": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-16T19:29:01+02:00",
+      "agent": "opencode deepseek/deepseek-flash high",
+      "base": "f42a4f118e5ec81b1dfff522a93638fa696b722b",
+      "commits": [
+        "c767c0e9d80e727d26495f17cda31f31f40fe854 Add the board's file-changing keys"
+      ],
+      "attempts": 1,
+      "handover": "# Handover 3.2 — Acting from the board\n\n## What landed\n\n- The board's file-changing keys, wired to `internal/board` operations,\n  reloading and re-running lint after each: `s` (open→settled→planned→open;\n  planned prompts, prefilled `docs/plans/`, `esc` cancels), `n` (Next add/remove),\n  `J`/`K` (Next move), `e`/`enter` (editor via `tea.ExecProcess`, wide only), `a`\n  (title→kind→area prompts on bubbles `textinput`), `d` (`y` confirmation), `r`\n  (reload).\n- `internal/tui/actions.go` holds the flows; `model.go` gained the prompt,\n  confirm, locator, status and exec fields; `view.go` renders the prompt, the\n  confirmation and a failed operation's error in the status line.\n- `internal/board.NextIndex` exports the position in Next that `J`/`K` need.\n- `cmd/benchpress/board.go` passes `repo.New(b.Root)` as the model's locator so a\n  reload re-finds plans with one lookup.\n- New dep: `github.com/atotto/clipboard` (bubbles `textinput`). `vendorHash` is\n  now `sha256-qWghvwsSYGR5UKAfIS9T7mkL1YJZQFrapSLiS4AJjaA=`.\n- `internal/tui/actions_test.go` covers each key on a `t.TempDir` fixture, the\n  plan cancel, the delete refusal, a plan-without-path failure shown with no\n  change, and the editor under `EDITOR`.\n\n## Landmark drift\n\n- None. 3.1's landmarks held; `tui.Model`/`New`/`Update`/`View` and\n  `board.*` operations are where the previous handover left them. `NextIndex`\n  is a new export over the existing unexported `nextIndex`.\n\n## Deviations from the work order\n\n- **Locator, not a reload callback.** `tui.Options` gained `Locator repo.Locator`\n  and `tui` now imports `repo`; §10 says `tui` calls `board` and `lint`, and\n  re-running lint needs a live locator. A reload calls `Find` once and hands a\n  static `planLocator` to `lint.Check`, preserving 3.1's one-git-lookup rule.\n  `cmd/benchpress` passes `repo.New(b.Root)`.\n- **Editor seam.** `Model.execProcess` defaults to `tea.ExecProcess`; tests\n  replace it with a synchronous runner. Production still runs the editor through\n  `tea.ExecProcess`. The key returns the `tea.Cmd`, so a real program passes it\n  through the event loop.\n- **Next move destination** is computed from `NextIndex`, not from the row\n  number, because a filter renumbers the visible Next rows.\n- `s` on a missing or invalid state falls through to `settled`.\n\n## What the next session must know\n\n- `m.reload()` re-runs `board.Load` + `lint.Check`, rebuilds rows and resets\n  `m.previewSlug` so an edited body re-renders. It keeps the selected slug when\n  it survives. Config is not re-read; board ops only touch topic files and Next.\n- Prompts are modal: `m.status` is cleared at the top of `key`, and prompt keys\n  go to `m.input` via `promptKey`; `esc` cancels, `enter` advances.\n- The delete confirmation consumes the next key: only `y` deletes; anything\n  else, including `q`, refuses.\n- The cursor does not blink: blink messages fall through `Update` unhandled.\n  Cosmetic only.\n\n## Open problems\n\n- `J`/`K` on a topic not in Next surfaces the board operation's error\n  (\"item not in Next\" / \"position out of range\") rather than a purpose-made\n  message.\n- `e` under `$VISUAL` is untested; only `$EDITOR` is.\n- The status hint still lists only 3.1's keys; the `?` help was already correct.",
+      "session_id": "ses_eba430014ffe5Qok04e1Gtrjbi",
+      "cost_usd": 0.062672832,
+      "harness": "opencode",
+      "elapsed_s": 366,
+      "session_s": 366,
+      "tokens": {
+        "input": 74916,
+        "output": 15814,
+        "reasoning": 37929,
+        "cache_read": 6396544
+      }
     }
   }
 }
