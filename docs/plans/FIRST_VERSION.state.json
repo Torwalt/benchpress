@@ -186,6 +186,31 @@
         "reasoning": 12672,
         "cache_read": 1248384
       }
+    },
+    "3.1": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-16T19:22:55+02:00",
+      "agent": "opencode deepseek/deepseek-flash high",
+      "base": "fd41d98088b74fa38a9784988a586e39da502045",
+      "commits": [
+        "53ef7bfbbaf12346712ff5f827878c17fb24d903 Add the read-only board"
+      ],
+      "attempts": 1,
+      "handover": "# Handover 3.1 — Looking at the board\n\n## What landed\n\n- `53ef7bf` Add the read-only board.\n- `internal/tui/model.go`, `view.go`: `Model`/`New`/`Init`/`Update`/`View`.\n  Rows are the numbered Next section then the groups; `tab` cycles\n  area→state→kind, `/` filters over title/slug/kind/area (`esc` clears),\n  `j`/`k`/arrows and `g`/`G` move, `ctrl+d`/`ctrl+u` scroll the preview,\n  `?` shows the key list, `q`/`ctrl+c` quit. Below 100 columns the preview is\n  hidden and `enter` toggles list↔preview. The preview is a bubbles viewport\n  holding glamour-rendered `topic.Body`; the status line carries the lint\n  summary (`lint clean`, `2 errors, 1 warning`), the filter, the grouping and a\n  hint; error rows are marked `!`.\n- `cmd/benchpress/board.go`: `stdoutIsTerminal`, `runBoard`, and a `locator`\n  that feeds one plan lookup to both the list and `lint.Check`. `main.go`'s root\n  gains `RunE`+`NoArgs`: no arguments opens the board when stdout is a character\n  device, else runs `ls`.\n- `internal/topic.Topic` gains `Body` (bytes after the closing front-matter\n  line); `internal/board.Topic` gains `Body()`. Test added in `topic_test.go`.\n- Deps: bubbletea v1.3.10, bubbles v1.0.0, lipgloss\n  v1.1.1-0.20250404203927-76690c660834, glamour v1.0.0. `vendorHash` is now\n  `sha256-Xbl5vtNPXJ/PWKCrfPZZCQ2yAuZ6lTnFPD2F55/4aw4=`.\n\n## Landmark drift\n\n- None. `board.Listing`, `lint.Check`, `config` and `repo` are where 2.x left\n  them. `topic.Parse` only gained the `Body` return field.\n\n## Deviations from the work order\n\n- **Body accessor.** The preview needed the file's source, which neither\n  `board` nor `lint` exposed. `topic.Parse` now fills `Topic.Body`;\n  `board.Topic.Body()` returns it. No existing contract changed.\n- **`?` lists the full §9 table, including 3.2's keys** (`s`, `n`, `J`/`K`,\n  `e`/`enter` wide, `a`, `d`, `r`); only 3.1's keys are bound. §9 says `?` shows\n  the full key list and 3.2 lands next.\n- **Terminal check** is `os.Stdout.Stat()` + `ModeCharDevice`, not\n  `golang.org/x/term`, to keep direct deps to the plan's four charm modules.\n  `/dev/null` counts as a terminal; not handled.\n- **One git lookup**: `findPlans` locates the plans and the `locator` hands the\n  same map to `lint.Check`, so the board asks git once.\n- **glamour uses `WithStandardStyle(\"dark\")`** so rendering does not query the\n  terminal (deterministic under `go test`).\n- `rowNext` and `rowTopic` are separate kinds, both selectable; `rowGroup` is\n  skipped by movement.\n\n## What the next session must know\n\n- Selection is `m.cursor`, an index into `m.rows`; `m.offset` scrolls.\n  `rebuild()` derives rows from `board.Listing(board.Filter{}, planFound)`, then\n  text-filters; `restoreCursor` keeps the slug selected across filter/`tab`.\n- `tui` does no file I/O. 3.2's operations should call the `board` methods,\n  reload from disk, re-run `lint`, and rebuild the model.\n- Bodies are captured once in `New`'s `bodies` map from `b.Topics`; a reload\n  must re-`Load` and rebuild the model or that map goes stale.\n- `enter` is bound only in the narrow layout; wide `enter` (editor) is left\n  unbound for 3.2.\n- Tests: `internal/tui/model_test.go` sends `tea.KeyMsg`/`tea.WindowSizeMsg`;\n  `cmd/benchpress/board_test.go` assumes `go test`'s stdout is a pipe so no-args\n  runs `ls`.\n- pty smoke test: `script` starts a 0x0 pty, so wrap the command as\n  `script -q -c \"sh -c 'stty rows 40 cols 120; exec ./benchpress'\" out` and feed\n  a key after a delay. No panic either way.\n\n## Open problems\n\n- Help advertises 3.2's keys before they do anything.\n- `ModeCharDevice` treats `/dev/null` as a terminal.\n- The lint summary is computed once at model creation; there is no reload in\n  3.1, so it cannot change until 3.2's `r`.\n- `helpView` is not width-aware; long help lines can wrap badly in a very\n  narrow terminal.",
+      "session_id": "ses_eba49b887ffeqZbg6r7T45EdeZ",
+      "cost_usd": 0.06836424,
+      "harness": "opencode",
+      "elapsed_s": 440,
+      "session_s": 439,
+      "verify_s": 1,
+      "test_s": 1,
+      "tokens": {
+        "input": 59876,
+        "output": 20325,
+        "reasoning": 48240,
+        "cache_read": 6081280
+      }
     }
   }
 }
