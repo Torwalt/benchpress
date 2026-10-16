@@ -139,6 +139,29 @@
         "reasoning": 36285,
         "cache_read": 2666240
       }
+    },
+    "2.4": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-16T19:13:27+02:00",
+      "agent": "opencode deepseek/deepseek-flash high",
+      "base": "8dabf113d2479ca390f8f4ff68b8453cc6bf1097",
+      "commits": [
+        "3c5f119c865c291ebdf1d59bcaa7436d37f3a23d Add the workbench-changing commands and their board operations"
+      ],
+      "attempts": 1,
+      "handover": "# Handover 2.4 — Changing the workbench from the command line\n\n## What landed\n\n- `3c5f119` Add the workbench-changing commands and their board operations\n- `internal/board/edit.go`: `(*Board).New(title, kind, area, toNext) (string, error)`,\n  `SetState(slug, state, plan)`, `NextAdd(slug, at)`, `NextRemove(slug)`,\n  `NextMove(slug, at)`, `Remove(slug) ([]string, error)`. `New` builds the file\n  (state `open`, `# Title`, empty `**Now:**`/`**Open:**`), validates kind/area\n  against `board.Config`, fails on an existing file, a disallowed kind/area and a\n  title that makes no slug. `SetState` edits only the `state`/`plan` lines via\n  `topic.Set`/`topic.Remove`; `Next*` rewrite Next via `next`'s operations and\n  `Render`. All writes go through one `writeAtomic` (temp file in the same dir,\n  rename, destination mode kept); `New` also `MkdirAll`s the workbench dir.\n- `cmd/benchpress`: `new`, `state`, `next add|rm|mv`, `rm`, wired in `main.go`.\n  `new` requires `--kind` and `--area` (cobra `MarkFlagRequired`). `rm` prints the\n  linking topics one path per line; every other changing command prints nothing.\n- Tests: `internal/board/edit_test.go` on `t.TempDir()` for every operation's\n  success and failure (existing file, disallowed kind/area, empty slug, unknown\n  slug, `planned` without a plan, bad state, position out of range, already/not\n  in Next); `cmd/benchpress/change_test.go` drives the commands and a\n  `TestLintCleanAfterChanges` runs all six operations, running `benchpress lint`\n  after each and requiring empty output.\n- `scripts/verify`, `go test ./...` and `nix build .#benchpress` green. No\n  `go.mod`/`go.sum` change; `vendorHash` untouched.\n\n## Landmark drift\n\nNone. `topic.Set`/`topic.Remove` and the `next` operations are where 1.2/1.3 left\nthem; `board.Load`, `repo.Locator`, `config.Config` and `main.go`'s `newRootCmd`\nare where 2.2/2.3 left them.\n\n## Deviations from the work order\n\n- **`next add` on an item already in Next is an error.** §4 says a topic appears\n  at most once, so the operation refuses to create a duplicate (which would be a\n  `next-duplicate` lint error) rather than silently adding one.\n- **`state` rejects a value outside `open`/`settled`/`planned`**, and `new`\n  rejects a title that slugifies to nothing; neither is spelled out by §7, but\n  both would otherwise write an invalid topic.\n- **`--at` for `next add` is an `int` flag defaulting to 0, meaning append.**\n  An explicit `--at 0` therefore appends rather than erroring.\n- **`new` prints the repository-relative path** (e.g. `work/foo.md`), matching\n  `ls`'s path style; `rm` prints the linking topics as repository-relative paths.\n- **`Remove` deletes the file before rewriting Next**, following §7's wording.\n  A failure between the two leaves the item pointing at a missing file; the\n  order could be swapped if that partial state is judged worse.\n\n## What the next session must know\n\n- Commands call `loadBoard()` (from `ls.go`), which finds the root and loads\n  topic + Next. Mutation methods are on the loaded `*Board`; they do not reload\n  it, so a command performs exactly one operation per invocation.\n- `requireTopic`/`nextIndex` accept a trailing `.md`, so `\u003cslug\u003e` and `\u003cslug\u003e.md`\n  both work. Slugs in `Board.Topics` are bare.\n- `linkedBy` resolves a link with `path.Clean(path.Join(cfg.Dir, target))` and\n  compares to the topic's `Path`, the same resolution lint uses; self-links are\n  skipped. Next items are not scanned (the design says \"topics\").\n- The lint-clean test relies on the fixture's `NEXT.md`, so no `next-absent`\n  warning; there are no planned topics, so `lint` never calls git.\n- 3.2's board keys should call these same methods (`n` = add-or-remove, `J`/`K` =\n  move, `s` = SetState, `a` = New, `d` = Remove) and then reload + re-lint.\n\n## Open problems\n\n- `new` does not escape Markdown in the title, so a title containing `]` or `(`\n  makes a Next link that will not parse; §7 is silent and titles are usually\n  plain. Consider escaping or validating the title if it matters.\n- `New ... toNext` writes the topic, then Next; a failed Next write leaves the\n  topic created. No cross-file transaction exists anywhere in this unit.\n- `Remove`'s design order (file, then Next) can leave a dangling `next-item` on\n  a mid-operation failure; see deviations.",
+      "session_id": "ses_eba4e5f6bffeuEhYNlQSJzgera",
+      "cost_usd": 0.03395896799999999,
+      "harness": "opencode",
+      "elapsed_s": 177,
+      "session_s": 176,
+      "tokens": {
+        "input": 52420,
+        "output": 12662,
+        "reasoning": 20494,
+        "cache_read": 2067456
+      }
     }
   }
 }
