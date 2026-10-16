@@ -162,6 +162,30 @@
         "reasoning": 20494,
         "cache_read": 2067456
       }
+    },
+    "2.5": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-16T19:15:34+02:00",
+      "agent": "opencode deepseek/deepseek-flash high",
+      "base": "35a0df772de30834e1d0ce65eaa80cb32b445b26",
+      "commits": [
+        "4057f6103221a78ee165932336b36f8cddf3a5c9 Add init and skill commands"
+      ],
+      "attempts": 1,
+      "handover": "# Handover 2.5 — init and skill\n\n## What landed\n\n- `4057f61` Add init and skill commands\n- `cmd/benchpress/init.go`: `newInitCmd`, `initRoot`, `installWorkbench`,\n  `existingOrDefaultConfig`, `defaultConfigFile`, `createOnly`, `symlinkOnly`.\n  `init` writes `.benchpress.toml` (`dir`, `kinds`), `\u003cdir\u003e/NEXT.md`\n  (`# Next\\n\\n`), `.agents/skills/benchpress/SKILL.md` from `benchpress.Skill`,\n  and, only when `.claude/skills/` is an existing dir, the directory symlink\n  `.claude/skills/benchpress → ../../.agents/skills/benchpress`. It prints each\n  created path (repo-relative, one per line) and prints nothing on a no-op run.\n  `--skill` rewrites the skill file from the binary and still fills in anything\n  else missing.\n- `cmd/benchpress/skill.go`: `benchpress skill` prints `benchpress.Skill`.\n- `cmd/benchpress/main.go`: both commands registered, `init` first, `skill`\n  last, matching §7's table order.\n- `cmd/benchpress/init_test.go`: fresh init (files, printed paths, config\n  parses to the defaults, installed bytes equal the embedded skill), second init\n  leaves content identical and prints nothing, `--skill` restores a changed\n  skill and leaves an existing config alone, the Claude symlink is created only\n  when `.claude/skills/` exists and resolves to the skill, and `skill` prints\n  the embedded file.\n- `scripts/verify`, `go test ./...` and `nix build .#benchpress` green. No\n  `go.mod`/`go.sum` change; `vendorHash` untouched.\n\n## Landmark drift\n\nNone. `embed.go`'s `benchpress.Skill`, `config.FindRoot`/`config.Load`/\n`config.DefaultDir`/`config.DefaultKinds` and `main.go`'s `newRootCmd` are\nwhere 2.1–2.4 left them. No earlier unit had touched init or skill.\n\n## Deviations from the work order\n\n- **Root discovery.** `init` uses `config.FindRoot`, falling back to the working\n  directory when no `.benchpress.toml` is found, so a re-run from a subdirectory\n  is a no-op rather than creating a nested workbench. §7 does not say how init\n  finds its root.\n- **Existing config is honoured.** When `.benchpress.toml` already exists, init\n  loads it and places `NEXT.md` in the configured `dir`, so re-running init\n  after a config change completes the right directory. Missing config falls back\n  to `config.DefaultDir`/`DefaultKinds`.\n- **`.benchpress.toml` omits `areas`.** §2 gives `areas` no default (absent\n  means any slug), so \"with the defaults\" is `dir` and `kinds` only. Writing an\n  `areas` list would invent a default §2 does not have.\n- **`createOnly` uses `O_EXCL`, not the temp-file+rename of §3.** The atomic\n  write rule is about topic edits; for init, `O_EXCL` makes the\n  never-overwrite check and the create one step.\n- **`--skill` is a full init plus the rewrite**, not a rewrite alone; it still\n  creates any other missing file.\n- **Output format** (`init`) is not specified; paths are repo-relative and\n  slash-separated, matching `new`/`rm`.\n\n## What the next session must know\n\n- The Claude entry is a **directory symlink**: `.claude/skills/benchpress`\n  points at the `benchpress/` skill directory, so the skill is read at\n  `.claude/skills/benchpress/SKILL.md`.\n- `init` imports the root package as `benchpress \"github.com/Torwalt/benchpress\"`\n  for `Skill`; this is the first `cmd` file to import it. No import cycle.\n- `init` runs no git, so tests need no `HOME`/`GIT_CEILING_DIRECTORIES` setup;\n  they rely on `t.TempDir()` having no `.benchpress.toml` above it.\n- `skill` ignores config and root entirely; it works in any directory.\n\n## Open problems\n\n- If an existing `.benchpress.toml` is invalid (bad TOML or unknown key),\n  `init` fails through `config.Load` rather than creating anything; untested and\n  arguably fine, but worth knowing.\n- The symlink target is a slash path (`../../.agents/skills/benchpress`); it is\n  fine on Unix, unverified on Windows.\n- `--skill` always reports the skill path even when the bytes were already\n  current; §7 says `--skill` rewrites, so this is deliberate.\n- DESIGN.md was not changed: the implementation follows §7/§8; the only choices\n  §7 leaves open are the root discovery and output format noted above.",
+      "session_id": "ses_eba4bacedffej4qw4yxxmqKyyE",
+      "cost_usd": 0.020906202,
+      "harness": "opencode",
+      "elapsed_s": 127,
+      "session_s": 126,
+      "verify_s": 1,
+      "tokens": {
+        "input": 30231,
+        "output": 8372,
+        "reasoning": 12672,
+        "cache_read": 1248384
+      }
     }
   }
 }
