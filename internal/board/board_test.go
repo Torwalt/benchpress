@@ -1,0 +1,189 @@
+package board
+
+import (
+	"os"
+	"path/filepath"
+	"reflect"
+	"testing"
+
+	"github.com/Torwalt/benchpress/internal/config"
+)
+
+func testConfig() *config.Config {
+	return &config.Config{
+		Dir:   "docs/workbench",
+		Kinds: []string{"bug", "change", "design", "idea"},
+		Areas: []string{"economy", "maps"},
+	}
+}
+
+func topicBody(kind, area, state, title string) string {
+	return "---\nkind: " + kind + "\narea: " + area + "\nstate: " + state + "\n---\n\n# " + title + "\n"
+}
+
+func writeTopic(t *testing.T, root, name, body string) {
+	t.Helper()
+	full := filepath.Join(root, "docs", "workbench", name)
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(full, []byte(body), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+}
+
+// loadFixture builds a board with the given topics and returns it.
+func loadFixture(t *testing.T, topics map[string]string, nextBody string) *Board {
+	t.Helper()
+	root := t.TempDir()
+	for name, body := range topics {
+		writeTopic(t, root, name, body)
+	}
+	if nextBody != "" {
+		writeTopic(t, root, "NEXT.md", nextBody)
+	}
+	b, err := Load(root, testConfig())
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	return b
+}
+
+func slugs(entries []Entry) []string {
+	out := make([]string, len(entries))
+	for i, e := range entries {
+		out[i] = e.Slug
+	}
+	return out
+}
+
+func TestListingOrder(t *testing.T) {
+	b := loadFixture(t, map[string]string{
+		"raised-ground.md":   topicBody("design", "maps", "planned", "Presentation on raised ground"),
+		"graphics-preset.md": topicBody("idea", "economy", "open", "A graphics preset"),
+		"drafts-strand.md":   topicBody("design", "economy", "open", "Drafts strand, and the player cannot help them"),
+		"taxes.md":           topicBody("change", "economy", "settled", "Taxes"),
+		"war-table.md":       topicBody("design", "maps", "settled", "The war table"),
+	}, "# Next\n\n1. [Presentation on raised ground](raised-ground.md)\n")
+
+	nextSlugs, entries := b.Listing(Filter{}, nil)
+	if want := []string{"raised-ground"}; !reflect.DeepEqual(nextSlugs, want) {
+		t.Errorf("next = %v, want %v", nextSlugs, want)
+	}
+	want := []string{"raised-ground", "graphics-preset", "drafts-strand", "taxes", "war-table"}
+	if got := slugs(entries); !reflect.DeepEqual(got, want) {
+		t.Errorf("order = %v, want %v", got, want)
+	}
+}
+
+func TestListingIgnoresReadmeAndSubdirectories(t *testing.T) {
+	b := loadFixture(t, map[string]string{
+		"a.md":          topicBody("bug", "maps", "open", "A"),
+		"README.md":     "not a topic\n",
+		"notes.txt":     "not markdown\n",
+		"sub/nested.md": topicBody("bug", "maps", "open", "Nested"),
+	}, "# Next\n")
+
+	if len(b.Topics) != 1 || b.Topics[0].Slug != "a" {
+		t.Fatalf("Topics = %v, want only a", b.Topics)
+	}
+	_, entries := b.Listing(Filter{}, nil)
+	if got := slugs(entries); !reflect.DeepEqual(got, []string{"a"}) {
+		t.Errorf("entries = %v, want only a", got)
+	}
+}
+
+func TestListingBrokenTopic(t *testing.T) {
+	b := loadFixture(t, map[string]string{
+		"good.md": topicBody("bug", "maps", "open", "Good"),
+		"bad.md":  "# No front matter\n",
+	}, "# Next\n")
+
+	_, entries := b.Listing(Filter{}, nil)
+	if len(entries) != 2 {
+		t.Fatalf("entries = %v, want good and bad", slugs(entries))
+	}
+	last := entries[len(entries)-1]
+	if last.Slug != "bad" {
+		t.Fatalf("last = %q, want bad", last.Slug)
+	}
+	if !last.Broken() || last.Issue == nil {
+		t.Fatalf("bad entry not marked broken: %+v", last)
+	}
+	if last.Issue.Rule != "front-matter" {
+		t.Errorf("issue rule = %q, want front-matter", last.Issue.Rule)
+	}
+}
+
+func TestListingFilter(t *testing.T) {
+	b := loadFixture(t, map[string]string{
+		"open-bug.md":     topicBody("bug", "economy", "open", "Open bug"),
+		"settled-idea.md": topicBody("idea", "maps", "settled", "Settled idea"),
+	}, "# Next\n\n1. [Open bug](open-bug.md)\n")
+
+	nextSlugs, entries := b.Listing(Filter{States: []string{"settled"}}, nil)
+	if len(nextSlugs) != 0 {
+		t.Errorf("next = %v, want empty for a settled filter", nextSlugs)
+	}
+	if got := slugs(entries); !reflect.DeepEqual(got, []string{"settled-idea"}) {
+		t.Errorf("state filter entries = %v", got)
+	}
+
+	nextSlugs, entries = b.Listing(Filter{Kinds: []string{"bug", "idea"}}, nil)
+	if !reflect.DeepEqual(nextSlugs, []string{"open-bug"}) {
+		t.Errorf("next = %v, want open-bug", nextSlugs)
+	}
+	if got := slugs(entries); !reflect.DeepEqual(got, []string{"open-bug", "settled-idea"}) {
+		t.Errorf("kind filter entries = %v", got)
+	}
+
+	_, entries = b.Listing(Filter{Areas: []string{"maps"}}, nil)
+	if got := slugs(entries); !reflect.DeepEqual(got, []string{"settled-idea"}) {
+		t.Errorf("area filter entries = %v", got)
+	}
+}
+
+func TestListingPlanFound(t *testing.T) {
+	planned := "---\nkind: design\narea: maps\nstate: planned\nplan: docs/plans/P.md\n---\n\n# Planned\n"
+	b := loadFixture(t, map[string]string{
+		"planned.md": planned,
+	}, "# Next\n\n1. [Planned](planned.md)\n")
+
+	if got := b.Plans(); !reflect.DeepEqual(got, []string{"docs/plans/P.md"}) {
+		t.Fatalf("Plans = %v", got)
+	}
+	_, entries := b.Listing(Filter{}, map[string][]string{"docs/plans/P.md": {"worktree", "main"}})
+	if len(entries) != 1 {
+		t.Fatalf("entries = %v", slugs(entries))
+	}
+	if got := entries[0].PlanFound; !reflect.DeepEqual(got, []string{"worktree", "main"}) {
+		t.Errorf("PlanFound = %v", got)
+	}
+}
+
+func TestLoadMissingDir(t *testing.T) {
+	b, err := Load(t.TempDir(), testConfig())
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(b.Topics) != 0 || len(b.Next.Items) != 0 {
+		t.Errorf("board = %+v, want empty", b)
+	}
+}
+
+func TestListingAreasAlphabeticalWhenUnconfigured(t *testing.T) {
+	root := t.TempDir()
+	writeTopic(t, root, "z.md", topicBody("bug", "zebra", "open", "Z"))
+	writeTopic(t, root, "a.md", topicBody("bug", "ant", "open", "A"))
+	cfg := testConfig()
+	cfg.Areas = nil
+
+	b, err := Load(root, cfg)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	_, entries := b.Listing(Filter{}, nil)
+	if got := slugs(entries); !reflect.DeepEqual(got, []string{"a", "z"}) {
+		t.Errorf("order = %v, want a then z", got)
+	}
+}

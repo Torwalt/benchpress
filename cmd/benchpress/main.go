@@ -13,6 +13,13 @@ import (
 var version = "dev"
 
 func main() {
+	if err := newRootCmd().Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, "benchpress:", err)
+		os.Exit(1)
+	}
+}
+
+func newRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:           "benchpress",
 		Short:         "A workbench of topics as Markdown files, with a board over them",
@@ -20,8 +27,6 @@ func main() {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-	if err := root.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, "benchpress:", err)
-		os.Exit(1)
-	}
+	root.AddCommand(newLSCmd())
+	return root
 }
