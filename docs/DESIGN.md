@@ -40,7 +40,8 @@ areas = ["economy", "maps", "army"]              # allowed areas, in display ord
 - An unknown key is an error, so a misspelt key is not silently ignored.
 - benchpress finds the repository root by walking up from the working directory
   to the first directory holding `.benchpress.toml`. Without one, every command
-  but `init` fails with `no .benchpress.toml here or above; run benchpress init`.
+  but `init` and `skill` fails with `no .benchpress.toml here or above; run
+  benchpress init`.
 
 Inside `dir`:
 
@@ -191,7 +192,7 @@ errors as `benchpress: message` with exit code 1.
 | command | does |
 | --- | --- |
 | `init` | creates `.benchpress.toml` with the defaults, `dir` with `NEXT.md`, and the skill at `.agents/skills/benchpress/SKILL.md`; when `.claude/skills/` exists, also the symlink `.claude/skills/benchpress → ../../.agents/skills/benchpress`. Never overwrites an existing file; `--skill` rewrites the skill from the binary. Prints what it created. |
-| `ls` | the Next items in order, then every other topic grouped by area (configured order, then alphabetical) and within an area by state (`open`, `settled`, `planned`) and then title. One line per topic: slug, state, kind, title, and for a planned topic its plan and where it was found. `--state`, `--kind`, `--area` filter, and each may be repeated. `--json` prints `{"next": [slug…], "topics": [{"slug", "path", "title", "kind", "area", "state", "plan", "plan_found": ["worktree" or a branch name…]}]}`, topics in the same order as the text. A topic that does not parse is listed by slug with its parse error, not skipped. |
+| `ls` | the Next items in order, then every other topic grouped by area (configured order, then alphabetical) and within an area by state (`open`, `settled`, `planned`) and then title. One line per topic: slug, state, kind, title, and for a planned topic its plan and where it was found. `--state`, `--kind`, `--area` filter, and each may be repeated. `--json` prints `{"next": [slug…], "topics": [{"slug", "path", "title", "kind", "area", "state", "plan", "plan_found": ["worktree" or a branch name…]}]}`, topics in the same order as the text. A topic that does not parse is listed, not skipped: by slug with its first parse error in the text, and with whichever of the JSON fields did parse. |
 | `new <title> --kind K --area A` | creates `<slug>.md` from the title (lower case; every run of characters outside `a-z0-9` becomes one hyphen; leading and trailing hyphens dropped), with state `open`, the title and the empty body sections `**Now:**` and `**Open:**`. Fails if the file exists or the kind or area is not allowed. Prints the path. `--next` also appends it to Next. |
 | `state <slug> <state> [--plan PATH]` | sets the state. `planned` requires `--plan`; any other state removes `plan`. |
 | `next add <slug> [--at N]` | adds the topic to Next, at the end or at position N (1-based). |
