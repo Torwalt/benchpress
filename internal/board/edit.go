@@ -162,6 +162,9 @@ func (b *Board) requireTopic(slug string) (*Topic, error) {
 	return nil, fmt.Errorf("unknown topic %q", slug)
 }
 
+// NextIndex returns slug's 0-based position in Next, or -1 when it is absent.
+func (b *Board) NextIndex(slug string) int { return b.nextIndex(slug) }
+
 // nextIndex returns the position of slug in Next, or -1.
 func (b *Board) nextIndex(slug string) int {
 	slug = strings.TrimSuffix(slug, ".md")

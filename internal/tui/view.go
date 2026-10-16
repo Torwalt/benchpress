@@ -113,10 +113,25 @@ func stateMark(state string) string {
 	return "·"
 }
 
-// statusView is the bottom line: the lint summary, the active filter and
-// grouping, and a one-line hint.
+// statusView is the bottom line: a prompt, the delete confirmation, or the
+// lint summary, the active filter and grouping, and a one-line hint. A failed
+// operation's error leads.
 func (m *Model) statusView() string {
-	parts := []string{m.lintSummary()}
+	switch {
+	case m.prompt != promptNone:
+		text := m.input.View()
+		if m.status != "" {
+			text = m.status + "  " + text
+		}
+		return statusStyle.Render(truncate(text, m.width))
+	case m.confirming:
+		return statusStyle.Render(truncate("delete "+m.confirmSlug+"? y/N", m.width))
+	}
+	var parts []string
+	if m.status != "" {
+		parts = append(parts, m.status)
+	}
+	parts = append(parts, m.lintSummary())
 	if m.filter != "" {
 		parts = append(parts, "filter: "+m.filter)
 	}

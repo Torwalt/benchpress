@@ -1,18 +1,20 @@
 // Package tui draws the board of docs/DESIGN.md §9 over a loaded board and the
-// problems lint found. It reads no file: cmd/benchpress loads the board and
-// checks it, then hands both to New. The keys that change a file are not here.
+// problems lint found. It changes files only through board's operations, and
+// calls lint again after a reload.
 package tui
 
 import (
 	"sort"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 
 	"github.com/Torwalt/benchpress/internal/board"
 	"github.com/Torwalt/benchpress/internal/lint"
+	"github.com/Torwalt/benchpress/internal/repo"
 )
 
 // narrowWidth is the column count below which the preview pane is hidden.
@@ -26,6 +28,8 @@ type Options struct {
 	Board     *board.Board
 	PlanFound map[string][]string
 	Problems  []lint.Problem
+	// Locator finds plans again after a change; nil skips the lookup.
+	Locator repo.Locator
 }
 
 // rowKind distinguishes the rows of the flattened list.
@@ -57,8 +61,20 @@ type Model struct {
 	board     *board.Board
 	planFound map[string][]string
 	problems  []lint.Problem
+	locator   repo.Locator
 	errPaths  map[string]bool
 	bodies    map[string][]byte
+	status    string // the last failed operation's message
+
+	input    textinput.Model
+	prompt   promptKind
+	newTitle string
+	newKind  string
+
+	confirming  bool
+	confirmSlug string
+
+	execProcess execProcessFunc
 
 	width, height int
 	listHeight    int
@@ -84,25 +100,41 @@ type Model struct {
 // New builds the board model from a loaded board and its lint problems.
 func New(opts Options) *Model {
 	m := &Model{
-		board:     opts.Board,
-		planFound: opts.PlanFound,
-		problems:  opts.Problems,
-		errPaths:  make(map[string]bool),
-		bodies:    make(map[string][]byte),
-		grouping:  groupings[0],
-	}
-	for _, p := range opts.Problems {
-		if p.Severity == lint.Error {
-			m.errPaths[p.Path] = true
-		}
-	}
-	if opts.Board != nil {
-		for _, t := range opts.Board.Topics {
-			m.bodies[t.Slug] = t.Body()
-		}
+		board:       opts.Board,
+		planFound:   opts.PlanFound,
+		problems:    opts.Problems,
+		locator:     opts.Locator,
+		errPaths:    errorPaths(opts.Problems),
+		bodies:      topicBodies(opts.Board),
+		grouping:    groupings[0],
+		input:       textinput.New(),
+		execProcess: tea.ExecProcess,
 	}
 	m.rebuild()
 	return m
+}
+
+// errorPaths is the set of paths a lint error names.
+func errorPaths(problems []lint.Problem) map[string]bool {
+	paths := make(map[string]bool)
+	for _, p := range problems {
+		if p.Severity == lint.Error {
+			paths[p.Path] = true
+		}
+	}
+	return paths
+}
+
+// topicBodies maps every loaded topic's slug to its body.
+func topicBodies(b *board.Board) map[string][]byte {
+	bodies := make(map[string][]byte)
+	if b == nil {
+		return bodies
+	}
+	for _, t := range b.Topics {
+		bodies[t.Slug] = t.Body()
+	}
+	return bodies
 }
 
 // Init starts the model with nothing to do.
@@ -119,6 +151,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.adjustOffset()
 	case tea.KeyMsg:
 		return m.key(msg)
+	case editorClosedMsg:
+		m.status = ""
+		if msg.err != nil {
+			m.status = msg.err.Error()
+		}
+		if err := m.reload(); err != nil {
+			m.status = err.Error()
+		}
+		return m, nil
 	}
 	return m, nil
 }
@@ -131,6 +172,13 @@ func (m *Model) key(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.showHelp = false
 		}
 		return m, nil
+	}
+	m.status = ""
+	if m.prompt != promptNone {
+		return m.promptKey(msg)
+	}
+	if m.confirming {
+		return m.confirmKey(msg)
 	}
 	if m.filtering {
 		return m.filterKey(msg)
@@ -158,10 +206,35 @@ func (m *Model) key(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.preview.HalfPageDown()
 	case "ctrl+u":
 		m.preview.HalfPageUp()
+	case "s":
+		return m, m.cycleState()
+	case "n":
+		m.toggleNext()
+		return m, nil
+	case "J":
+		m.moveNext(1)
+		return m, nil
+	case "K":
+		m.moveNext(-1)
+		return m, nil
+	case "a":
+		return m, m.startNew()
+	case "d":
+		m.startDelete()
+		return m, nil
+	case "r":
+		if err := m.reload(); err != nil {
+			m.status = err.Error()
+		}
+		return m, nil
+	case "e":
+		return m, m.editSelected()
 	case "enter":
 		if m.narrow {
 			m.narrowPreview = !m.narrowPreview
 			m.syncPreview()
+		} else {
+			return m, m.editSelected()
 		}
 	}
 	m.afterMove()

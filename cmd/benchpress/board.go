@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/Torwalt/benchpress/internal/lint"
+	"github.com/Torwalt/benchpress/internal/repo"
 	"github.com/Torwalt/benchpress/internal/tui"
 )
 
@@ -44,7 +45,12 @@ func runBoard(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	model := tui.New(tui.Options{Board: b, PlanFound: planFound, Problems: problems})
+	model := tui.New(tui.Options{
+		Board:     b,
+		PlanFound: planFound,
+		Problems:  problems,
+		Locator:   repo.New(b.Root),
+	})
 	_, err = tea.NewProgram(model, tea.WithAltScreen()).Run()
 	return err
 }
