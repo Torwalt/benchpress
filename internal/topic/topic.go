@@ -354,6 +354,14 @@ func fenceMarker(line string) (char byte, length int, rest string, ok bool) {
 	return c, j - i, line[j:], true
 }
 
+// LineLinks returns the checkable relative links on one line of Markdown,
+// ignoring code spans, each numbered with line.
+func LineLinks(line string, number int) []Link {
+	var links []Link
+	collectLinks(line, number, &links)
+	return links
+}
+
 // collectLinks appends every relative inline link on line, ignoring code.
 func collectLinks(line string, number int, out *[]Link) {
 	for i := 0; i < len(line); {

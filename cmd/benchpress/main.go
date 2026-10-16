@@ -3,6 +3,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -12,11 +13,23 @@ import (
 // version is stamped at build time.
 var version = "dev"
 
+// exitError is a command's request for a process exit code, returned after the
+// command has printed everything it has to say.
+type exitError int
+
+func (e exitError) Error() string { return "" }
+
 func main() {
-	if err := newRootCmd().Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, "benchpress:", err)
-		os.Exit(1)
+	err := newRootCmd().Execute()
+	if err == nil {
+		return
 	}
+	var code exitError
+	if errors.As(err, &code) {
+		os.Exit(int(code))
+	}
+	fmt.Fprintln(os.Stderr, "benchpress:", err)
+	os.Exit(1)
 }
 
 func newRootCmd() *cobra.Command {
@@ -28,5 +41,6 @@ func newRootCmd() *cobra.Command {
 		SilenceErrors: true,
 	}
 	root.AddCommand(newLSCmd())
+	root.AddCommand(newLintCmd())
 	return root
 }
