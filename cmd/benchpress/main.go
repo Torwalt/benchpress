@@ -40,11 +40,13 @@ func newRootCmd() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
+	root.AddCommand(newInitCmd())
 	root.AddCommand(newLSCmd())
 	root.AddCommand(newLintCmd())
 	root.AddCommand(newNewCmd())
 	root.AddCommand(newStateCmd())
 	root.AddCommand(newNextCmd())
 	root.AddCommand(newRmCmd())
+	root.AddCommand(newSkillCmd())
 	return root
 }
