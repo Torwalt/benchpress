@@ -234,6 +234,31 @@
         "reasoning": 37929,
         "cache_read": 6396544
       }
+    },
+    "4.1": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-16T19:33:23+02:00",
+      "agent": "opencode deepseek/deepseek-flash high",
+      "base": "f885bca8845ff807fc5af92dc1de410a418c8a03",
+      "commits": [
+        "a4ea06ef319c25c993ae41b84b23bb25d571acba Dogfood the workbench and document its use"
+      ],
+      "attempts": 1,
+      "handover": "# Handover 4.1 — Package, dogfood and document\n\n## What landed\n\n- `a4ea06e` Dogfood the workbench and document its use.\n- Ran `benchpress init` here; committed what it created: `.benchpress.toml`,\n  `docs/workbench/NEXT.md`, and `.agents/skills/benchpress/SKILL.md`. This repo\n  has no `.claude/skills/`, so init made no symlink.\n- The deferred cross-branch view is recorded as an `open` topic:\n  `docs/workbench/show-topics-another-branch-has-deleted-or-changed.md`\n  (`kind: change`, `area: git`), created with `benchpress new` and then written\n  by hand. It says what exists now (board reads disk; `repo` answers plan paths\n  only) and the open questions.\n- `README.md` gains a *Use* section: `init`, the board (and `ls` in a pipe),\n  `lint` in a repository's checks, and how a pass's plan takes a topic.\n- `docs/DESIGN.md` corrected in two places (below).\n- Green: `scripts/verify`, `go test ./...`, `benchpress lint` (exit 0),\n  `nix flake check`, `nix run . -- ls` (lists the new topic). Tree clean.\n\n## Landmark drift\n\nNone. `README.md`, `docs/DESIGN.md` and `flake.nix` are where the plan said.\nNo `go.mod`/`go.sum` change, so `vendorHash` is untouched.\n\n## Deviations from the work order\n\n- **The installed skill is committed.** `init` writes\n  `.agents/skills/benchpress/SKILL.md`; dogfooding means this repo tracks it\n  (it is not gitignored). The source copy `skills/benchpress/SKILL.md` stays the\n  embed source.\n- **Topic kind/area chosen.** `change` under area `git`; the title follows the\n  plan's deferred decision.\n- **DESIGN corrections** (the only two contradictions I found against the built\n  code):\n  - §2 said \"every command but `init`\" needs `.benchpress.toml`; `skill` does\n    not (it prints the embedded file and ignores config/root). Now \"`init` and\n    `skill`\".\n  - §7 said an unparsable topic is listed \"with its parse error\"; the JSON\n    schema has no error field. Now: text shows the first parse error, `--json`\n    carries the fields that did parse.\n- No code changed. 4.1 is packaging/dogfooding/docs; I did not touch the\n  board's status hint (an open problem, below).\n\n## What the next session must know\n\n- This was the last unit of the first version; there is no 4.2. `docs/DESIGN.md`\n  §2 and §7 now match the built commands.\n- `benchpress` now lints the repository's own workbench. Keep it clean when\n  editing topics: `./benchpress lint` should exit 0. (`docs/plans/` is not the\n  workbench; the workbench is `docs/workbench/`.)\n- A flake sees only tracked files: stage new workbench files before any `nix`\n  command. `scripts/verify` and `go test ./...` do not need staging.\n- `nix run . -- ls` reads the workbench from the working directory at runtime,\n  not from the store, so the file just has to exist on disk.\n\n## Open problems\n\n- The board's status-line hint (`internal/tui/view.go:139`) still lists only the\n  read-only keys (`j/k`, `/`, `tab`, `?`, `q`); the file-changing keys are only\n  in `?`. §9 asks for \"a one-line hint\", so it is not drift, but it is stale.\n- `ls --json` still has no parse-error field for a broken topic; the design now\n  documents the fields that parsed instead.\n- The `s`, `J` and `K` board keys surface the raw `board` operation errors for\n  edge cases (missing plan, not in Next, out of range) rather than messages\n  made for the board. Untouched from 3.2.\n- `e`/$VISUAL remains untested; only `$EDITOR` is.",
+      "session_id": "ses_eba3d6b19ffe4OMDguBL8mCP2f",
+      "cost_usd": 0.043711974,
+      "harness": "opencode",
+      "elapsed_s": 262,
+      "session_s": 261,
+      "verify_s": 1,
+      "test_s": 1,
+      "tokens": {
+        "input": 81485,
+        "output": 7824,
+        "reasoning": 28107,
+        "cache_read": 3310208
+      }
     }
   }
 }
