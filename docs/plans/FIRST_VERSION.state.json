@@ -45,6 +45,30 @@
         "reasoning": 30451,
         "cache_read": 1168896
       }
+    },
+    "1.3": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-16T19:00:38+02:00",
+      "agent": "opencode deepseek/deepseek-flash high",
+      "base": "ffb7f9b388e82b0f11e9b949f0d28076efc45ebd",
+      "commits": [
+        "a4646ff9a90b84e17a1401cd7432d38d3c4a3eca Add next: parse NEXT.md items and rewrite the list block"
+      ],
+      "attempts": 1,
+      "handover": "# Handover 1.3 — NEXT.md\n\n## What landed\n\n- `a4646ff` Add next: parse NEXT.md items and rewrite the list block\n- New package `internal/next`, pure text over bytes: `New`, `Parse`, `Render`,\n  and the operations `Add`, `AddAt`, `Remove`, `Move`; types `Next`, `Item`;\n  sentinels `ErrPosition`, `ErrNoItem`.\n- `Parse` splits every list line (`- ` or `N. ` at column 1) into an `Item`\n  with its line, leading-link target and content; non-item lines are kept raw in\n  two groups (before and after the first item).\n- `Render` numbers the items `1. `.. into one contiguous block where the first\n  item stood, keeps every non-item line, and keeps the file's newline style and\n  final-newline state. Tests cover mixed bullets/numbers, prose between items,\n  no-link items, all four operations and their error cases, a no-item file and\n  byte-for-byte round trips (LF, CRLF, no final newline).\n- `scripts/verify`, `go test ./...` and `nix build .#benchpress` are green; no\n  dependency change, `vendorHash` untouched.\n\n## Landmark drift\n\nNone. `docs/DESIGN.md` §4 is as the plan described.\n\n## Deviations from the work order\n\n- The unit fixed `Parse`, `Render` and `New` but not the operations' shapes. I\n  chose `Add(Item)` to append, `AddAt(Item, at)` for a 1-based insert (end is\n  `len+1`), and target-based `Remove(target)` / `Move(target, at)`. Out-of-range\n  positions wrap `ErrPosition`; an absent target wraps `ErrNoItem`.\n- `Item.Text` is the whole item content **without** its marker (the `- `/`N. `),\n  so rendering is `strconv.Itoa(n) + \". \" + Text`. Target is the leading link's\n  relative target, mirroring `topic.cleanTarget`: fragment stripped, and empty\n  for schemes, absolute paths, bare fragments and non-links.\n- `Item.Line` is the source line for parsed items, 0 for added ones; it is not\n  used by `Render`.\n- The HEAD/TAIL split is a rendering device, not part of the public API: only\n  `Items` and the operations are exported.\n\n## What the next session must know\n\n- `Move`/`Remove` identify an item by `Target`. Items with no link (`Target ==\n  \"\"`) cannot be moved or removed this way; board `J`/`K` should read\n  `Items[pos].Target` first, or a positional operation can be added.\n- Duplicate targets are not prevented here (that is lint's `next-duplicate`);\n  target-based ops act on the first match.\n- Rendering normalises terminators to the file's dominant style (`\\n` or\n  `\\r\\n` detected from the first newline). A file with mixed terminators will\n  not round-trip byte for byte; uniform files do.\n- `Add` does not check for a duplicate target.\n\n## Open problems\n\n- The unit's phrase \"the text after the link\" could be read as a separate\n  suffix field; I read it as the item content minus marker, since the link's\n  display text must survive for a faithful rewrite. If 2.3/2.4 want the suffix\n  only, add a field here.\n- No markdown fence handling: a `- ` line inside a fenced code block counts as\n  an item. §4 gives no fence exception, unlike §3 for topics.",
+      "session_id": "ses_eba5a39f4ffe7QQhd63XuK7zq0",
+      "cost_usd": 0.02519451,
+      "harness": "opencode",
+      "elapsed_s": 184,
+      "session_s": 184,
+      "verify_s": 1,
+      "tokens": {
+        "input": 25133,
+        "output": 7719,
+        "reasoning": 22795,
+        "cache_read": 1038720
+      }
     }
   }
 }
