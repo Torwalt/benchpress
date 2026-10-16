@@ -35,7 +35,7 @@
           pname = "benchpress";
           inherit version;
           src = self;
-          vendorHash = "sha256-n58Qmiv3gik1qkuXQFbQ+soeOQtUz1dUocEAJepqp/E=";
+          vendorHash = "sha256-Xbl5vtNPXJ/PWKCrfPZZCQ2yAuZ6lTnFPD2F55/4aw4=";
           subPackages = [ "cmd/benchpress" ];
           nativeCheckInputs = [ pkgs.git ];
           preCheck = "export HOME=$TMPDIR";

@@ -38,6 +38,21 @@ func TestParseValid(t *testing.T) {
 	}
 }
 
+func TestParseBody(t *testing.T) {
+	got, _ := Parse([]byte(valid))
+	want := "\n# Drafts strand, and the player cannot help them\n\n*Design, from the 2026-10-13 playtest.* What was said, dated.\n\n**Now:** what the build does today, with landmarks.\n\n**Open:**\n\n- the questions still to settle\n"
+	if string(got.Body) != want {
+		t.Errorf("Body = %q, want %q", got.Body, want)
+	}
+}
+
+func TestParseBodyWithoutFrontMatter(t *testing.T) {
+	got, _ := Parse([]byte("# just a heading\n"))
+	if got.Body != nil {
+		t.Errorf("Body = %q, want nil", got.Body)
+	}
+}
+
 func TestParseField(t *testing.T) {
 	got, _ := Parse([]byte(valid))
 	f, ok := got.Field("area")

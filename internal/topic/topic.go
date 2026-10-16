@@ -41,6 +41,7 @@ type Topic struct {
 	Title     string
 	TitleLine int
 	Links     []Link
+	Body      []byte // everything after the closing front-matter line
 }
 
 // Field returns the front-matter field for key and whether it is present.
@@ -73,6 +74,7 @@ func Parse(src []byte) (Topic, []Issue) {
 	if closing < 0 {
 		return t, []Issue{{Rule: "front-matter", Line: 1, Message: "front matter is not closed"}}
 	}
+	t.Body = bytes.Join(lines[closing+1:], nil)
 
 	var issues []Issue
 	seen := make(map[string]bool)

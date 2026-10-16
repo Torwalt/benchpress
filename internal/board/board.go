@@ -39,6 +39,9 @@ func (t *Topic) Plan() string { return t.field("plan") }
 // Title is the topic's level-one heading, or "" when it has none.
 func (t *Topic) Title() string { return t.Parsed.Title }
 
+// Body is the topic's Markdown after its front matter.
+func (t *Topic) Body() []byte { return t.Parsed.Body }
+
 // Broken reports a topic with a structural issue: it did not parse cleanly.
 func (t *Topic) Broken() bool { return len(t.Issues) > 0 }
 

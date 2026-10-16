@@ -39,6 +39,13 @@ func newRootCmd() *cobra.Command {
 		Version:       version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
+		Args:          cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !stdoutIsTerminal() {
+				return newLSCmd().RunE(cmd, args)
+			}
+			return runBoard(cmd)
+		},
 	}
 	root.AddCommand(newInitCmd())
 	root.AddCommand(newLSCmd())
