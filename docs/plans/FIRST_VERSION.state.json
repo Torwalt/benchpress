@@ -1,0 +1,27 @@
+{
+  "units": {
+    "1.1": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-16T18:53:58+02:00",
+      "agent": "opencode deepseek/deepseek-flash high",
+      "base": "894dd6687736a1371fdfc045547575b899245635",
+      "commits": [
+        "5f6d8ad278f36d93256e973afbd9acd8c776b015 Add config: defaults, unknown-key check, root discovery"
+      ],
+      "attempts": 1,
+      "handover": "# Handover 1.1 — Configuration and root discovery\n\n## What landed\n\n- `5f6d8ad` Add config: defaults, unknown-key check, root discovery\n- New package `internal/config`: `Config{Dir, Kinds, Areas}`, `Load(root)`,\n  `FindRoot(start)`, `ErrNoRoot`, constants `FileName`, `DefaultDir`, and\n  `DefaultKinds`.\n- Added `github.com/BurntSushi/toml v1.6.0` (go.mod/go.sum) and updated\n  `flake.nix` `vendorHash` to `sha256-n58Qmiv3gik1qkuXQFbQ+soeOQtUz1dUocEAJepqp/E=`.\n- Tests cover defaults, a full file, an unknown key, discovery from a nested\n  directory, and absence of any file above.\n\n## Landmark drift\n\nNone. `docs/DESIGN.md` §2 is unchanged and matches the code.\n\n## Deviations from the work order\n\n- The unit named only `FindRoot`'s signature. I gave `Load(root string)` a\n  directory argument (it reads `root/.benchpress.toml`) since callers get the\n  root from `FindRoot`; the plan left this open.\n- Defaults are decided with `toml.MetaData.IsDefined`: an absent `kinds` gets\n  `DefaultKinds`; a `dir` that is absent **or empty** gets `DefaultDir`.\n- Unknown-key error wording is mine: `unknown key \"foo\" in .benchpress.toml`\n  (multiple keys are joined). The test asserts only that the key is named.\n\n## What the next session must know\n\n- `FindRoot` returns an absolute path and returns `ErrNoRoot` (usable with\n  `errors.Is`) whose message is exactly §2's\n  `no .benchpress.toml here or above; run benchpress init`.\n- `Load` applies no default to an explicitly empty `kinds = []`; the design is\n  silent on that case.\n- `Config` fields are exported and untagged beyond the toml names; later units\n  (init, board, lint) can build on it. `DefaultKinds` is a package var so\n  `init` can serialise it.\n- nix sees only tracked files: new files were staged before building. The tree\n  is clean; nothing else was touched.\n\n## Open problems\n\n- None blocking. The error-message format for unknown keys is unspecified by\n  the design beyond \"naming any unknown key\", so a later unit that pins a format\n  may need to change it.",
+      "session_id": "ses_eba5ebce7ffeK03og8LUheYvOU",
+      "cost_usd": 0.013438932,
+      "harness": "opencode",
+      "elapsed_s": 80,
+      "session_s": 80,
+      "tokens": {
+        "input": 35102,
+        "output": 4533,
+        "reasoning": 5427,
+        "cache_read": 732544
+      }
+    }
+  }
+}
