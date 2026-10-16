@@ -93,6 +93,29 @@
         "reasoning": 12995,
         "cache_read": 593024
       }
+    },
+    "2.2": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-16T19:05:50+02:00",
+      "agent": "opencode deepseek/deepseek-flash high",
+      "base": "b841a5038f626d5b7d7224cc54324ec9915f3d69",
+      "commits": [
+        "5261897375c6ae55cf9cf67f82d74327d5b65d97 Add board: load topics and Next, and the ls command"
+      ],
+      "attempts": 1,
+      "handover": "# Handover 2.2 — Loading the board, and `ls`\n\n## What landed\n\n- `5261897` Add board: load topics and Next, and the ls command\n- New package `internal/board`: `Load(root, cfg) (*Board, error)` reads every\n  `*.md` directly in `cfg.Dir` except `NEXT.md` and `README.md`, parses each with\n  `topic.Parse`, and parses `NEXT.md` with `next.Parse`. `Topic` holds Slug,\n  repo-relative Path, `Parsed topic.Topic` and structural `Issues`, with\n  `Kind/Area/State/Plan/Title/Broken/FirstIssue` accessors.\n- `Board.Listing(Filter, planFound)` returns the `next` slugs and the ordered\n  `[]Entry`, and `Board.Plans()` the distinct plan paths of planned topics.\n  Ordering: Next items in Next order, then other topics by configured area\n  order (then alphabetical, then no area last), state `open`,`settled`,`planned`,\n  then title, then slug.\n- `benchpress ls` (new `cmd/benchpress/ls.go`), with repeatable `--state`,\n  `--kind`, `--area` and `--json`. Plan locations come from `repo.Find` over\n  `Board.Plans()`. `main.go` now exposes `newRootCmd()` so the command is\n  testable.\n- Tests: `internal/board/board_test.go` on `t.TempDir()` fixtures (ordering,\n  ignored README/non-md/subdirs, broken topic, filters, plan locations,\n  alphabetical areas, missing dir); `cmd/benchpress/ls_test.go` runs `ls` and\n  `ls --json` in a fixture and checks text order and JSON.\n- `scripts/verify`, `go test ./...`, `nix build .#benchpress` green. No\n  `go.mod`/`go.sum` change; `vendorHash` untouched.\n\n## Landmark drift\n\nNone. `docs/DESIGN.md` §2 and the `ls` row of §7 are as the plan described.\n`internal/lint` still does not exist, so `ls` uses `repo.New` directly.\n\n## Deviations from the work order\n\n- §7 does not fix the text format, only the fields. I chose group headings\n  (`Next`, then each area name), each topic line indented two spaces:\n  `slug  state  kind  title`, plus `  plan (worktree, branch…)` for a planned\n  topic (`(not found)` when nowhere). A broken topic's line is\n  `slug  \u003cfirst issue message\u003e`.\n- Filters apply to the whole view: a Next item filtered out is omitted from\n  both the `next` array and the groups. The design is silent; this matches\n  \"filter\".\n- `next` and `topics` in `--json` are always `[]`/arrays, never `null`;\n  `plan_found` is `[]` for topics with no plan.\n- A missing workbench `dir` yields an empty board rather than an error (the\n  design is silent; §2 only fails on a missing `.benchpress.toml`).\n\n## What the next session must know\n\n- `Board.Topics` is sorted by slug and carries the raw `topic.Topic` (Fields,\n  Links, TitleLine) and `Issues`; lint 2.3 can build its rules from it plus\n  `Board.Next` and `Board.Config`. `lint` can take `repo.Locator` for plans.\n- `Entry.Issue` holds the first structural issue; `Entry.Broken()` is\n  `Issue != nil`. `Entry.PlanFound` is filled only for `state: planned` with a\n  plan, from the map passed to `Listing`.\n- `targetSlug` matches a Next link target to a slug by base name (`a/b.md` →\n  `b`); a Next item whose target names no loaded topic is skipped by `ls`\n  (that is lint's `next-item`).\n- The command test chdirs into the fixture and sets `HOME` and\n  `GIT_CEILING_DIRECTORIES`; do not run such tests in parallel.\n\n## Open problems\n\n- A broken topic's parse error is shown in the text but **not** in `--json`:\n  §7's JSON schema has no error field, and I did not add one. If 2.3/2.4 fix a\n  wording or want the error in JSON, that schema must change in `docs/DESIGN.md`.\n- `ls` treats any structural issue as \"broken\" and prints only slug+error,\n  dropping a partially parsed state/kind/title. This is my reading of \"listed by\n  slug with its parse error\".\n- Group headings and the two-space indent are invented (see deviations); a\n  later unit pinning ls's exact text must revisit them.",
+      "session_id": "ses_eba55a97affeVGnzZ9y8mcO6PT",
+      "cost_usd": 0.032579646000000004,
+      "harness": "opencode",
+      "elapsed_s": 198,
+      "session_s": 198,
+      "tokens": {
+        "input": 42629,
+        "output": 11972,
+        "reasoning": 22458,
+        "cache_read": 1842432
+      }
     }
   }
 }
