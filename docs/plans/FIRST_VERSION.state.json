@@ -116,6 +116,29 @@
         "reasoning": 22458,
         "cache_read": 1842432
       }
+    },
+    "2.3": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-16T19:10:30+02:00",
+      "agent": "opencode deepseek/deepseek-flash high",
+      "base": "12e8055af10aaf51026dbe4d0b9caa86834844ba",
+      "commits": [
+        "f3c06d795c63074efbbebd0d33452503c055d659 Add lint: the rules over a loaded board, and the lint command"
+      ],
+      "attempts": 1,
+      "handover": "# Handover 2.3 — Lint\n\n## What landed\n\n- New package `internal/lint`: `Check(ctx, *board.Board, repo.Locator) ([]Problem, error)`.\n  `Problem{Path, Line, Severity, Rule, Message}` carries the rule name, so\n  `--json` and tests both see it. It maps `board.Topic.Issues` (topic's own\n  structural rules) plus the value, Next and link rules of §6, sorts by path\n  then line, and returns nil when clean. It never prints.\n- `benchpress lint [--json]` (`cmd/benchpress/lint.go`): text is\n  `path:line: severity: message`, JSON is `{\"problems\":[…]}`; exits 1 when any\n  severity is `error`, 0 otherwise. `main.go` gains `exitError int`, recognized\n  by `main`, so a lint failure exits quietly with 1.\n- `topic.LineLinks(line, n) []Link` is a new exported wrapper over the existing\n  link scanner, so Next item text is scanned with the same parser as topic\n  bodies (see deviations).\n- Tests: `internal/lint/lint_test.go` has one case per §6 rule name (17 of\n  them), each on a minimal fixture producing exactly that rule, plus a clean\n  fixture; `cmd/benchpress/lint_test.go` runs the command and checks the path/line\n  order, exit 1 on errors, exit 0 on a warning only, and the `--json` shape.\n- `scripts/verify`, `go test ./...`, `nix build .#benchpress` green. No\n  `go.mod`/`go.sum` change; `vendorHash` untouched.\n\n## Landmark drift\n\nNone. `internal/lint` was absent as the plan said; `board.Board`/`board.Topic`,\n`repo.Locator`, `config.Config` and `topic` are all where 2.2's handover said.\n\n## Deviations from the work order\n\n- **Next links.** §6's `topic-link` says \"from a topic or from Next\". `next`\n  only exposes an item's leading target, and `topic.collectLinks` was\n  unexported, so I added `topic.LineLinks` and scan the whole item text. A Next\n  item that begins with a link to a missing `*.md` in `dir` therefore reports\n  **both** `next-item` and `topic-link` — two genuinely different problems. The\n  minimal-fixture tests keep each rule alone.\n- **`link` vs `topic-link` partition.** A relative link resolving under `dir`\n  whose target ends `.md` is `topic-link` (error) when missing; a link\n  resolving outside `dir` is the `link` warning when missing. Non-`.md` links\n  directly in `dir`, and `.md` links under a subdirectory that exist, report\n  nothing; §6 does not cover them.\n- **`plan` emptiness.** A present-but-empty `plan` counts as no plan: planned →\n  `plan-missing`, non-planned → nothing. Only a non-empty plan triggers\n  `plan-unexpected`/`plan-gone`.\n- **Command exit.** Added `exitError` in `main.go`; the loop's checks read\n  `cmd.Execute()`'s error, so this is the testable way to signal exit 1 without\n  the process exiting or printing `benchpress:`.\n\n## What the next session must know\n\n- `lint.Check` needs a non-nil `repo.Locator`. It asks it once for `Board.Plans()`;\n  with no planned topics it never calls git, so command tests need no repository.\n- The plan's JSON `problems` is always an array (`[]` when clean). Messages are\n  not pinned by §6; only `rule` is.\n- `topic.LineLinks` shares `collectLinks`, so Next link detection matches topic\n  bodies exactly (code spans ignored, fragments/schemes/absolute targets dropped).\n- 2.4's mutations should run `lint.Check` (or shell `benchpress lint`) after\n  writing, per §9; `Check` itself does no writes.\n\n## Open problems\n\n- The two-problems case above is a reading of §6, not stated in the design. If\n  the author wants one problem per missing Next target, `checkNext` must skip\n  `checkLink` for a leading target that already failed `next-item`.\n- §10 calls `lint` a pure package tested on in-memory values, but link\n  existence needs the working tree; lint stats `Root` and its tests use\n  `t.TempDir`. A future pass may want the file set passed in.\n- `ls`'s JSON still has no parse-error field (2.2's open problem); untouched here.",
+      "session_id": "ses_eba52a6efffeETrq4ciPScLutY",
+      "cost_usd": 0.04379801999999999,
+      "harness": "opencode",
+      "elapsed_s": 280,
+      "session_s": 280,
+      "tokens": {
+        "input": 43858,
+        "output": 12416,
+        "reasoning": 36285,
+        "cache_read": 2666240
+      }
     }
   }
 }
