@@ -69,6 +69,30 @@
         "reasoning": 22795,
         "cache_read": 1038720
       }
+    },
+    "2.1": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-16T19:02:31+02:00",
+      "agent": "opencode deepseek/deepseek-flash high",
+      "base": "66fca81c57b63e68b1adea50e7ac823ec0b22fb8",
+      "commits": [
+        "d537e8f0687f9d439c9313b8c1b35c9aea34a240 Add repo: locate paths in the worktree and local branches"
+      ],
+      "attempts": 1,
+      "handover": "# Handover 2.1 — Where plans are\n\n## What landed\n\n- `d537e8f` Add repo: locate paths in the worktree and local branches\n- New package `internal/repo`, read-only git. `New(root)` returns `*Repo`;\n  `Find(ctx, paths...) (map[string][]string, error)` returns, per path, the\n  ordered places holding it: `repo.Worktree` (\"worktree\") first when it exists\n  on disk, then each local branch short name that holds it.\n- `Locator` interface (`Find(ctx, paths...) (map[string][]string, error)`) is\n  defined in `repo` and satisfied by `*Repo`; lint/board can hold it and fake it\n  without git.\n- Per §5: one `git for-each-ref --format=%(refname:short) refs/heads`, then one\n  `git ls-tree -r --name-only \u003cbranch\u003e -- \u003cpath\u003e...` per branch, all paths at\n  once. No other git command is run. Tests record the subcommands to prove it.\n- Outside a repository, `for-each-ref` fails and `Find` returns the worktree\n  hits with a nil error.\n- `scripts/verify`, `go test ./...` and `nix build .#benchpress` green. No\n  `go.mod`/`go.sum` change; `vendorHash` untouched.\n\n## Landmark drift\n\nNone. §5 read as written. `internal/lint` does not exist yet, so the interface\ncould not be defined in it; see deviations.\n\n## Deviations from the work order\n\n- The unit let the interface live \"here or in `lint`\". `lint` does not exist\n  yet, so I defined `repo.Locator` in `repo`. 2.3's lint can take `repo.Locator`\n  directly; if it prefers its own interface, define it there and drop this one\n  instead of duplicating.\n- `Find` takes a `context.Context` and returns an error (git can fail per\n  branch), rather than a bare map. Outside a repo the error is nil.\n- Results are a map from path to a slice of locations, not one call per path:\n  §5's whole point is batching every plan path into the per-branch `ls-tree`.\n\n## What the next session must know\n\n- Locations are repo-root-relative strings; \"worktree\" is `repo.Worktree`.\n  Branch order is for-each-ref's, i.e. refname-sorted.\n- `Find` swallows *any* `for-each-ref` error as \"not a repository\" (no\n  `rev-parse` is run, per the command restriction). A `ls-tree` error on a real\n  branch is returned.\n- Paths are matched literally against `ls-tree` output; a path is expected to be\n  a file, not a directory or glob. No `:(literal)` pathspec is used.\n- Tests live in `package repo` and set `HOME` via `t.Setenv`, plus\n  `GIT_CEILING_DIRECTORIES` in the non-repo test so a parent repo cannot leak in.\n  Repo tests use `git init -b main` for a deterministic base branch.\n\n## Open problems\n\n- `for-each-ref` failure being treated as non-repo can hide a broken git; no\n  distinction is possible without a third command, which the done-when forbids.\n- For a very large path set the `ls-tree` argument list is unbounded; fine for\n  plan paths, worth revisiting only if callers batch wildly.",
+      "session_id": "ses_eba57668bffeTPstJ8Mg2yfMQw",
+      "cost_usd": 0.016093272,
+      "harness": "opencode",
+      "elapsed_s": 114,
+      "session_s": 113,
+      "test_s": 1,
+      "tokens": {
+        "input": 24408,
+        "output": 4760,
+        "reasoning": 12995,
+        "cache_read": 593024
+      }
     }
   }
 }
