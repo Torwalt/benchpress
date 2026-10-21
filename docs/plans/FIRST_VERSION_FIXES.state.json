@@ -1,0 +1,27 @@
+{
+  "units": {
+    "1.1": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T21:43:18+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "92b6fe9ac1c1a6d78d0905ae9146ce6c1b445805",
+      "commits": [
+        "346d10afd70f576625fb64dd32262e54425a3f9a config: reject keys with the wrong case"
+      ],
+      "attempts": 1,
+      "handover": "# 1.1 Reject configuration keys with the wrong case\n\n## What landed\n\n- `config: reject keys with the wrong case` — `config.Load` now validates every\n  top-level key from `toml.MetaData.Keys()` against the exact spellings `dir`,\n  `kinds`, `areas`, instead of relying on `Undecoded`, which misses keys the\n  decoder matched case-insensitively. Rejected keys are quoted in the error.\n- `TestLoadRejectsCaseVariantKeys` covers `Kinds`, `Dir`, `AREAS`, an unrelated\n  `foo`, and acceptance of all three lowercase keys with their values.\n\n## Landmark drift\n\nNone. `internal/config/config.go` and `config_test.go` are where the work order\nsaid.\n\n## Deviations from the work order\n\nNone. The unknown-key error keeps its existing wording and now names every\nrejected key, comma-separated.\n\n## What the next session must know\n\n- `meta.Keys()` includes key groups, so a nested key fails the `len(key) != 1`\n  check and its dotted `key.String()` is reported. `Undecoded` is no longer\n  used.\n- `DESIGN.md` already promises an unknown key is an error and lists the three\n  lowercase keys, so no design change was needed.\n- Both `scripts/verify` and `go test ./...` were green before the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_ea003522affeYw8mVEd3KAtEzD",
+      "cost_usd": 0.007742267999999999,
+      "harness": "opencode",
+      "elapsed_s": 42,
+      "session_s": 41,
+      "tokens": {
+        "input": 23622,
+        "output": 3000,
+        "reasoning": 1997,
+        "cache_read": 400256
+      }
+    }
+  }
+}
