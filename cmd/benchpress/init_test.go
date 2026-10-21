@@ -115,6 +115,21 @@ func TestInitClaudeSymlink(t *testing.T) {
 	}
 }
 
+func TestInitClaudeSkillsStatError(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("skills", filepath.Join(root, ".claude/skills")); err != nil {
+		t.Fatalf("symlink loop: %v", err)
+	}
+
+	out, err := runRoot(t, root, "init")
+	if err == nil {
+		t.Fatalf("init succeeded despite the .claude/skills stat error\n%s", out)
+	}
+}
+
 func TestSkillCmdPrintsEmbedded(t *testing.T) {
 	root := t.TempDir()
 	out, err := runRoot(t, root, "skill")

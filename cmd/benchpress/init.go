@@ -101,7 +101,12 @@ func installWorkbench(root string, rewriteSkill bool) ([]string, error) {
 		add(skillFile)
 	}
 
-	if info, err := os.Stat(filepath.Join(root, filepath.FromSlash(claudeSkills))); err == nil && info.IsDir() {
+	info, err := os.Stat(filepath.Join(root, filepath.FromSlash(claudeSkills)))
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+	case err != nil:
+		return nil, err
+	case info.IsDir():
 		link := filepath.Join(root, filepath.FromSlash(claudeLink))
 		if ok, err := symlinkOnly(link, "../../"+skillDir); err != nil {
 			return nil, err
