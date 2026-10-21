@@ -31,8 +31,9 @@ func runRoot(t *testing.T, root string, args ...string) (string, error) {
 	return out.String(), err
 }
 
-// lintFixture has one missing Next item, one missing topic link and one bad
-// topic, on distinct paths and lines.
+// lintFixture has problems on distinct paths and lines. good.md collects its
+// structural unknown-key before its earlier value error, so path and line
+// sorting is not source or collection order.
 func lintFixture(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
@@ -40,7 +41,7 @@ func lintFixture(t *testing.T) string {
 	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(root))
 	writeFile(t, root, ".benchpress.toml", "dir = \"work\"\nareas = [\"economy\", \"maps\"]\n")
 	writeFile(t, root, "work/NEXT.md", "# Next\n\n1. [Good](good.md)\n2. [Gone](gone.md)\n")
-	writeFile(t, root, "work/good.md", "---\nkind: bug\narea: maps\nstate: open\n---\n\n# Good\n\n[missing](missing.md)\n")
+	writeFile(t, root, "work/good.md", "---\nkind: nope\narea: maps\nstate: open\nbogus: x\n---\n\n# Good\n\n[missing](missing.md)\n")
 	return root
 }
 
@@ -63,17 +64,19 @@ func TestLintTextOrdersAndExitsOne(t *testing.T) {
 		t.Fatalf("err = %v, want exitError(1)\n%s", err, out)
 	}
 	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
-	if len(lines) != 3 {
-		t.Fatalf("output = %q, want 3 lines", out)
-	}
 	want := []string{
-		"work/NEXT.md:4: error:",
-		"work/NEXT.md:4: error:",
-		"work/good.md:9: error:",
+		`work/NEXT.md:4: error: Next item links to missing topic "gone"`,
+		`work/NEXT.md:4: error: link to missing topic file "gone.md"`,
+		`work/good.md:2: error: kind "nope" is not configured`,
+		`work/good.md:5: error: unknown key "bogus"`,
+		`work/good.md:10: error: link to missing topic file "missing.md"`,
 	}
-	for i, prefix := range want {
-		if !strings.HasPrefix(lines[i], prefix) {
-			t.Errorf("line %d = %q, want prefix %q", i, lines[i], prefix)
+	if len(lines) != len(want) {
+		t.Fatalf("output = %q, want %d lines", out, len(want))
+	}
+	for i, line := range want {
+		if lines[i] != line {
+			t.Errorf("line %d = %q, want %q", i, lines[i], line)
 		}
 	}
 }
@@ -155,13 +158,27 @@ func TestLintJSON(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &got); err != nil {
 		t.Fatalf("unmarshal: %v\n%s", err, out)
 	}
-	if len(got.Problems) != 3 {
-		t.Fatalf("problems = %+v, want 3", got.Problems)
+	want := []struct {
+		Path string
+		Line int
+		Rule string
+	}{
+		{"work/NEXT.md", 4, "next-item"},
+		{"work/NEXT.md", 4, "topic-link"},
+		{"work/good.md", 2, "kind"},
+		{"work/good.md", 5, "unknown-key"},
+		{"work/good.md", 10, "topic-link"},
 	}
-	if got.Problems[0].Rule != "next-item" || got.Problems[0].Severity != "error" {
-		t.Errorf("problems[0] = %+v", got.Problems[0])
+	if len(got.Problems) != len(want) {
+		t.Fatalf("problems = %+v, want %d", got.Problems, len(want))
 	}
-	if got.Problems[2].Path != "work/good.md" || got.Problems[2].Rule != "topic-link" {
-		t.Errorf("problems[2] = %+v", got.Problems[2])
+	for i, w := range want {
+		p := got.Problems[i]
+		if p.Path != w.Path || p.Line != w.Line || p.Rule != w.Rule {
+			t.Errorf("problems[%d] = %+v, want path %q line %d rule %q", i, p, w.Path, w.Line, w.Rule)
+		}
+		if p.Severity != "error" {
+			t.Errorf("problems[%d].severity = %q, want error", i, p.Severity)
+		}
 	}
 }
