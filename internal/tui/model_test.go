@@ -1,9 +1,11 @@
 package tui
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -29,6 +31,51 @@ func writeTopic(t *testing.T, root, name, body string) {
 func topicText(kind, area, state, title string) string {
 	return "---\nkind: " + kind + "\narea: " + area + "\nstate: " + state +
 		"\n---\n\n# " + title + "\n\n**Now:** the build does a thing.\n"
+}
+
+// topicWithBody is topicText with a caller-chosen body.
+func topicWithBody(kind, area, state, title, body string) string {
+	return "---\nkind: " + kind + "\narea: " + area + "\nstate: " + state +
+		"\n---\n\n# " + title + "\n\n" + body
+}
+
+// previewBody puts phrase in a body with filler paragraphs long enough to
+// scroll the preview.
+func previewBody(phrase string, paragraphs int) string {
+	var b strings.Builder
+	b.WriteString("**Now:** " + phrase + ".\n")
+	for i := 0; i < paragraphs; i++ {
+		fmt.Fprintf(&b, "\nFiller paragraph %d, apart from the marker phrase.\n", i)
+	}
+	return b.String()
+}
+
+// ansiEscape matches the terminal styling glamour puts around words.
+var ansiEscape = regexp.MustCompile("\x1b\\[[0-9;]*m")
+
+// plainView drops terminal styling so a test can look for rendered text.
+func plainView(s string) string { return ansiEscape.ReplaceAllString(s, "") }
+
+// previewBoard is two topics whose bodies carry distinct phrases absent from
+// their titles, the first long enough to scroll.
+func previewBoard(t *testing.T) *board.Board {
+	t.Helper()
+	root := t.TempDir()
+	writeTopic(t, root, "alpha.md", topicWithBody("design", "economy", "open", "Alpha topic",
+		previewBody("the midnight quokka phrase", 40)))
+	writeTopic(t, root, "beta.md", topicWithBody("design", "economy", "open", "Beta topic",
+		previewBody("the dawn lorikeet phrase", 1)))
+	writeTopic(t, root, "NEXT.md", "# Next\n\n1. [Alpha topic](alpha.md)\n2. [Beta topic](beta.md)\n")
+	cfg := &config.Config{
+		Dir:   "docs/workbench",
+		Kinds: []string{"bug", "change", "design", "idea"},
+		Areas: []string{"economy", "maps"},
+	}
+	b, err := board.Load(root, cfg)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	return b
 }
 
 // fixtureBoard is five topics across two areas and three states, with one in
@@ -263,6 +310,62 @@ func TestViewNamesSelectedTitle(t *testing.T) {
 	pressRune(m, 'j')
 	if !strings.Contains(m.View(), "A graphics preset") {
 		t.Errorf("view missing second title:\n%s", m.View())
+	}
+}
+
+func TestPreviewShowsSelectedBody(t *testing.T) {
+	m := newTestModel(t, Options{Board: previewBoard(t)})
+	wantSlug(t, m, "alpha")
+	const alphaPhrase = "the midnight quokka phrase"
+	const betaPhrase = "the dawn lorikeet phrase"
+
+	view := plainView(m.View())
+	if !strings.Contains(view, alphaPhrase) {
+		t.Fatalf("wide view missing the selected body phrase %q:\n%s", alphaPhrase, view)
+	}
+	if strings.Contains(view, betaPhrase) {
+		t.Fatalf("wide view shows the unselected body phrase %q:\n%s", betaPhrase, view)
+	}
+
+	pressRune(m, 'j')
+	wantSlug(t, m, "beta")
+	view = plainView(m.View())
+	if !strings.Contains(view, betaPhrase) {
+		t.Errorf("view after selecting the second topic missing %q:\n%s", betaPhrase, view)
+	}
+	if strings.Contains(view, alphaPhrase) {
+		t.Errorf("view after selecting the second topic still shows %q:\n%s", alphaPhrase, view)
+	}
+
+	pressRune(m, 'k')
+	wantSlug(t, m, "alpha")
+	if view := plainView(m.View()); !strings.Contains(view, alphaPhrase) {
+		t.Errorf("view after returning to the first topic missing %q:\n%s", alphaPhrase, view)
+	}
+}
+
+func TestPreviewScrollKeys(t *testing.T) {
+	m := newTestModel(t, Options{Board: previewBoard(t)})
+	wantSlug(t, m, "alpha")
+	if m.preview.YOffset != 0 {
+		t.Fatalf("initial YOffset = %d, want 0", m.preview.YOffset)
+	}
+
+	pressType(m, tea.KeyCtrlD)
+	if m.preview.YOffset <= 0 {
+		t.Fatalf("ctrl+d left YOffset = %d, want it to increase", m.preview.YOffset)
+	}
+	first := m.preview.YOffset
+
+	pressType(m, tea.KeyCtrlD)
+	if m.preview.YOffset <= first {
+		t.Fatalf("second ctrl+d left YOffset = %d, want more than %d", m.preview.YOffset, first)
+	}
+	down := m.preview.YOffset
+
+	pressType(m, tea.KeyCtrlU)
+	if m.preview.YOffset >= down {
+		t.Fatalf("ctrl+u left YOffset = %d, want less than %d", m.preview.YOffset, down)
 	}
 }
 
