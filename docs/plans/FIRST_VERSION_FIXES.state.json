@@ -396,6 +396,29 @@
         "reasoning": 1220,
         "cache_read": 314112
       }
+    },
+    "3.8": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:01:22+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "dff706bacd7cc85557056562eb762af177155eba",
+      "commits": [
+        "a496c4a0fcaa07b2f72087fd44d95facb3cccfdd board: pin authored Next order in listing tests"
+      ],
+      "attempts": 1,
+      "handover": "# 3.8 Pin the order of multiple Next entries\n\n## What landed\n\n- `board: pin authored Next order in listing tests` (`a496c4a`).\n- `TestListingNextOrder` loads `second.md` before `first.md` in Next, with\n  titles `Beta second` and `Alpha first`, and asserts both `nextSlugs` and the\n  leading `entries` are `[second first]`.\n- `TestLSNextOrder` builds the same fixture and asserts the text lines appear\n  second then first, plus the JSON `next` and `topics` arrays are both\n  `[second first]`.\n\n## Landmark drift\n\nNone. `internal/board/board_test.go` and `cmd/benchpress/ls_test.go` are as\ncited; `Board.Listing` is still at `internal/board/board.go:162`.\n\n## Deviations from the work order\n\nNone. Coverage-only: production behavior already preserved Next order. A\ntemporary `sort.Strings(nextSlugs)` in `Listing` made both focused tests fail\nwith `[first second]`; production code was restored unchanged.\n\n## What the next session must know\n\n- The titles and slugs both run reverse to the authored Next order, so either\n  sorting or reverse iteration is caught by both tests.\n- `TestLSNextOrder` uses its own fixture rather than the shared `fixture`, so\n  existing ls assertions keep their single-item Next.\n- `scripts/verify` and `go test ./...` were green after the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9ff30e1cffed80vkRDrNJE3F1",
+      "cost_usd": 0.008539614000000001,
+      "harness": "opencode",
+      "elapsed_s": 60,
+      "session_s": 59,
+      "tokens": {
+        "input": 28265,
+        "output": 2459,
+        "reasoning": 2262,
+        "cache_read": 489088
+      }
     }
   }
 }
