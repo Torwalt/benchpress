@@ -91,6 +91,29 @@
         "reasoning": 3534,
         "cache_read": 518528
       }
+    },
+    "1.5": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T21:46:51+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "12e288050c67e1593959fc2c22dc6a0409294c88",
+      "commits": [
+        "c2f394dbf7512144901a082392755c9e6cf5713e next: separate added items from unterminated prose"
+      ],
+      "attempts": 1,
+      "handover": "# 1.5 Separate a newly added Next block from unterminated prose\n\n## What landed\n\n- `next: separate added items from unterminated prose` — `Next.Render` inserts\n  the source's newline before the first item when the last head line has no\n  terminator. Existing head bytes are untouched; a source with no final newline\n  still renders its final item without one. `TestAddAfterUnterminatedProse`\n  covers Add and AddAt at 1 for LF and CRLF sources, the exact added item bytes,\n  and the no-op round trip for both.\n\n## Landmark drift\n\nNone. `Render` was at `internal/next/next.go:121` and is now at 121-137;\n`Add` and `AddAt` are unchanged.\n\n## Deviations from the work order\n\n- The new test also asserts that parsing and rendering without an operation\n  returns the source byte for byte, because the goal requires the no-operation\n  round trip to stay unchanged. No new test file.\n\n## What the next session must know\n\n- The separator is emitted only when items exist and the last head line lacks\n  `\\n`; a no-item source still renders unchanged, including a completely empty\n  source (empty stays empty).\n- CRLF style comes from `Next.nl`, detected from the first newline in the\n  source, so an unterminated CRLF file gets `\\r\\n` before the item.\n- `scripts/verify` and `go test ./...` were green before the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_ea0006858ffeHJhKtOJax04d2y",
+      "cost_usd": 0.012585480000000001,
+      "harness": "opencode",
+      "elapsed_s": 64,
+      "session_s": 63,
+      "tokens": {
+        "input": 50464,
+        "output": 2216,
+        "reasoning": 3859,
+        "cache_read": 456960
+      }
     }
   }
 }
