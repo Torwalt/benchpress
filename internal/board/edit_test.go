@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/Torwalt/benchpress/internal/next"
 )
 
 func readFile(t *testing.T, root, rel string) string {
@@ -40,6 +42,62 @@ func TestNewNext(t *testing.T) {
 	want := "# Next\n\n1. [A graphics preset](a-graphics-preset.md)\n"
 	if got := readFile(t, b.Root, "docs/workbench/NEXT.md"); got != want {
 		t.Errorf("NEXT.md =\n%q\nwant\n%q", got, want)
+	}
+}
+
+func TestNextTitleEscaping(t *testing.T) {
+	cases := []struct {
+		title string
+		slug  string
+		label string
+	}{
+		{"Fix [thing]", "fix-thing", `Fix \[thing\]`},
+		{"A [b](c.md)", "a-b-c-md", `A \[b\](c.md)`},
+		{`Back\slash [x]`, "back-slash-x", `Back\\slash \[x\]`},
+	}
+	for _, c := range cases {
+		t.Run(c.title, func(t *testing.T) {
+			b := loadFixture(t, map[string]string{
+				"c.md": topicBody("bug", "maps", "open", "C"),
+			}, "# Next\n\n")
+			if _, err := b.New(c.title, "bug", "maps", true); err != nil {
+				t.Fatalf("New: %v", err)
+			}
+			body := readFile(t, b.Root, "docs/workbench/"+c.slug+".md")
+			if !strings.Contains(body, "\n# "+c.title+"\n") {
+				t.Errorf("topic title changed:\n%s", body)
+			}
+			want := "[" + c.label + "](" + c.slug + ".md)"
+			if items := next.Parse([]byte(readFile(t, b.Root, "docs/workbench/NEXT.md"))).Items; len(items) != 1 || items[0].Text != want || items[0].Target != c.slug+".md" {
+				t.Fatalf("Next after New = %+v, want text %q target %q", items, want, c.slug+".md")
+			}
+
+			var err error
+			if b, err = Load(b.Root, b.Config); err != nil {
+				t.Fatalf("Load: %v", err)
+			}
+			if err := b.NextRemove(c.slug); err != nil {
+				t.Fatalf("NextRemove: %v", err)
+			}
+			if items := next.Parse([]byte(readFile(t, b.Root, "docs/workbench/NEXT.md"))).Items; len(items) != 0 {
+				t.Errorf("Next after removal = %+v, want empty", items)
+			}
+			if err := b.NextAdd(c.slug, 0); err != nil {
+				t.Fatalf("NextAdd: %v", err)
+			}
+			if items := next.Parse([]byte(readFile(t, b.Root, "docs/workbench/NEXT.md"))).Items; len(items) != 1 || items[0].Target != c.slug+".md" {
+				t.Errorf("Next after NextAdd = %+v, want target %q", items, c.slug+".md")
+			}
+			if _, err := b.Remove(c.slug); err != nil {
+				t.Fatalf("Remove: %v", err)
+			}
+			if items := next.Parse([]byte(readFile(t, b.Root, "docs/workbench/NEXT.md"))).Items; len(items) != 0 {
+				t.Errorf("Next after rm = %+v, want empty", items)
+			}
+			if _, err := os.Stat(filepath.Join(b.Root, "docs/workbench/c.md")); err != nil {
+				t.Errorf("c.md went away: %v", err)
+			}
+		})
 	}
 }
 

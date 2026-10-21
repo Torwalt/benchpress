@@ -47,6 +47,48 @@ func TestNewCmd(t *testing.T) {
 	}
 }
 
+func TestNewNextBracketTitle(t *testing.T) {
+	root := changeFixture(t)
+	writeFile(t, root, "work/c.md", "---\nkind: bug\narea: maps\nstate: open\n---\n\n# C\n")
+
+	title := "A [b](c.md)"
+	out, err := runRoot(t, root, "new", title, "--kind", "idea", "--area", "economy", "--next")
+	if err != nil {
+		t.Fatalf("new: %v\n%s", err, out)
+	}
+	if got := strings.TrimSpace(out); got != "work/a-b-c-md.md" {
+		t.Errorf("output = %q, want work/a-b-c-md.md", got)
+	}
+	if body := readAt(t, root, "work/a-b-c-md.md"); !strings.Contains(body, "\n# "+title+"\n") {
+		t.Errorf("topic title changed:\n%s", body)
+	}
+	if next := readAt(t, root, "work/NEXT.md"); !strings.Contains(next, `[A \[b\](c.md)](a-b-c-md.md)`) {
+		t.Errorf("NEXT.md = \n%s", next)
+	}
+	if out, err := runRoot(t, root, "lint"); err != nil || out != "" {
+		t.Fatalf("lint: %v\n%s", err, out)
+	}
+
+	if out, err := runRoot(t, root, "next", "rm", "a-b-c-md"); err != nil {
+		t.Fatalf("next rm: %v\n%s", err, out)
+	}
+	if next := readAt(t, root, "work/NEXT.md"); strings.Contains(next, "a-b-c-md") {
+		t.Errorf("after next rm:\n%s", next)
+	}
+	if out, err := runRoot(t, root, "next", "add", "a-b-c-md"); err != nil {
+		t.Fatalf("next add: %v\n%s", err, out)
+	}
+	if out, err := runRoot(t, root, "rm", "a-b-c-md"); err != nil {
+		t.Fatalf("rm: %v\n%s", err, out)
+	}
+	if next := readAt(t, root, "work/NEXT.md"); strings.Contains(next, "a-b-c-md") {
+		t.Errorf("after rm:\n%s", next)
+	}
+	if _, err := os.Stat(filepath.Join(root, "work/c.md")); err != nil {
+		t.Errorf("c.md went away: %v", err)
+	}
+}
+
 func TestNewCmdFailures(t *testing.T) {
 	root := changeFixture(t)
 	cases := [][]string{

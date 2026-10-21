@@ -236,8 +236,11 @@ func nextText(slug, title string) string {
 	if title == "" {
 		title = slug
 	}
-	return "[" + title + "](" + slug + ".md)"
+	return "[" + nextLabelEscaper.Replace(title) + "](" + slug + ".md)"
 }
+
+// nextLabelEscaper keeps a title from closing the generated link's label early.
+var nextLabelEscaper = strings.NewReplacer(`\`, `\\`, `[`, `\[`, `]`, `\]`)
 
 func validState(s string) bool {
 	switch s {
