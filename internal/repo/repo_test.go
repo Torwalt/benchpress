@@ -94,6 +94,21 @@ func TestFindWorktreeAndBranch(t *testing.T) {
 	}
 }
 
+func TestFindEveryHoldingBranch(t *testing.T) {
+	dir := gitRepo(t)
+	writeFile(t, dir, "docs/plans/a.md", "x")
+	commit(t, dir, "a")
+	runGit(t, dir, "checkout", "-q", "-b", "other")
+	writeFile(t, dir, "docs/plans/b.md", "y")
+	commit(t, dir, "b")
+	runGit(t, dir, "checkout", "-q", "main")
+
+	got := find(t, New(dir), "docs/plans/a.md")
+	if want := []string{Worktree, "main", "other"}; !reflect.DeepEqual(got["docs/plans/a.md"], want) {
+		t.Errorf("locations = %v, want %v", got["docs/plans/a.md"], want)
+	}
+}
+
 func TestFindNowhere(t *testing.T) {
 	dir := gitRepo(t)
 	writeFile(t, dir, "README.md", "seed")
