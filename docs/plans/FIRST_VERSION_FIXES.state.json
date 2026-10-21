@@ -22,6 +22,29 @@
         "reasoning": 1997,
         "cache_read": 400256
       }
+    },
+    "1.2": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T21:43:54+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "f8c0f1b799135b9b85f32696fd062028e7992ef6",
+      "commits": [
+        "38fc30f835627111f2497ae3eca58edffa005c00 config: skip directory impostors in root discovery"
+      ],
+      "attempts": 1,
+      "handover": "# 1.2 Walk past a directory named like the configuration file\n\n## What landed\n\n- `config: skip directory impostors in root discovery` — `FindRoot` now requires\n  `os.Stat` to report a regular file (which follows symlinks) before choosing a\n  root; anything else, including a directory named `.benchpress.toml`, is\n  skipped and discovery continues upward.\n- `TestFindRootSkipsConfigDirectory` covers a real config above an impostor\n  directory and `ErrNoRoot` when only the impostor exists.\n  `TestFindRootFollowsConfigSymlink` pins the symlink-to-regular-file behavior.\n\n## Landmark drift\n\nNone. `internal/config/config.go:63` was still `FindRoot`, and the check was\nthe `os.Stat` at the former line 69.\n\n## Deviations from the work order\n\nNone. `os.Stat` already followed symlinks, so `Mode().IsRegular()` on its result\ncovers both parts of the goal without `Lstat` or `os.Readlink`.\n\n## What the next session must know\n\n- Non-regular files (FIFOs, devices, sockets) now also fail to mark a root;\n  that follows from the \"regular file\" wording and is not separately tested.\n- No DESIGN change: §2's \"first directory holding `.benchpress.toml`\" already\n  implies a file, and no format, command, key, lint rule or package boundary\n  changed.\n- Both `scripts/verify` and `go test ./...` were green before the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_ea002adceffeXcjAcDTQRKsy5F",
+      "cost_usd": 0.00793059,
+      "harness": "opencode",
+      "elapsed_s": 36,
+      "session_s": 35,
+      "tokens": {
+        "input": 36049,
+        "output": 2162,
+        "reasoning": 629,
+        "cache_read": 282880
+      }
     }
   }
 }
