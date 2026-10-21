@@ -442,6 +442,29 @@
         "reasoning": 6162,
         "cache_read": 817280
       }
+    },
+    "3.10": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:03:20+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "2c44e5872594f4d7a36a0d84790497ca8eefa7ab",
+      "commits": [
+        "ccffeaf193ffdbe663ab5861c7886643ae2853fd board: pin grouped state order outside Next"
+      ],
+      "attempts": 1,
+      "handover": "# 3.10 Pin planned topics after settled topics outside Next\n\n## What landed\n\n- `board: pin grouped state order outside Next` (`ccffeaf`).\n- `TestListingGroupedStateOrder` loads one open, one settled and one planned\n  topic in the same area with no `NEXT.md` entries. Titles are chosen to\n  conflict with the state order (open \"Zulu\", settled \"Alpha\", planned \"Mike\")\n  so a title-only sort cannot satisfy the assertion. It asserts the listing is\n  open, settled, planned.\n\n## Landmark drift\n\n`stateRank` is at `internal/board/board.go:279`; the listing order test area is\naround `internal/board/board_test.go:205-360`. No drift.\n\n## Deviations from the work order\n\nNone. Coverage-only: production code unchanged. I temporarily swapped the\nsettled/planned return values in `stateRank` and saw the new test fail with\n`[open planned settled]`, then restored `board.go`.\n\n## What the next session must know\n\n- A missing `NEXT.md` (`nextBody == \"\"` in `loadFixture`) yields an empty Next,\n  which is what keeps this fixture from being masked by Next ordering.\n- `scripts/verify` and `go test ./...` were green after the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9ff0c357ffeMb1Ai91NV2GbL1",
+      "cost_usd": 0.005476602000000001,
+      "harness": "opencode",
+      "elapsed_s": 28,
+      "session_s": 27,
+      "tokens": {
+        "input": 21627,
+        "output": 1556,
+        "reasoning": 675,
+        "cache_read": 297984
+      }
     }
   }
 }
