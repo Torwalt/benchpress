@@ -174,6 +174,37 @@ func TestSetStateFailures(t *testing.T) {
 	}
 }
 
+func TestWritesPreserveMode(t *testing.T) {
+	const mode fs.FileMode = 0o600
+	b := loadFixture(t, map[string]string{
+		"a.md": topicBody("bug", "maps", "open", "A"),
+		"b.md": topicBody("bug", "maps", "open", "B"),
+	}, "# Next\n\n1. [A](a.md)\n")
+	topicPath := filepath.Join(b.Root, "docs", "workbench", "a.md")
+	nextPath := b.nextPath()
+	for _, name := range []string{topicPath, nextPath} {
+		if err := os.Chmod(name, mode); err != nil {
+			t.Fatalf("chmod %s: %v", name, err)
+		}
+	}
+
+	if err := b.SetState("a", "settled", ""); err != nil {
+		t.Fatalf("SetState: %v", err)
+	}
+	if err := b.NextAdd("b", 0); err != nil {
+		t.Fatalf("NextAdd: %v", err)
+	}
+	for _, name := range []string{topicPath, nextPath} {
+		info, err := os.Stat(name)
+		if err != nil {
+			t.Fatalf("stat %s: %v", name, err)
+		}
+		if got := info.Mode().Perm(); got != mode {
+			t.Errorf("%s mode = %v, want %v", filepath.Base(name), got, mode)
+		}
+	}
+}
+
 func TestNextAdd(t *testing.T) {
 	b := loadFixture(t, map[string]string{
 		"a.md": topicBody("bug", "maps", "open", "A"),
