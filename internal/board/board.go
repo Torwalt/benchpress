@@ -68,6 +68,10 @@ type Board struct {
 	Config *config.Config
 	Topics []*Topic
 	Next   next.Next
+
+	// writeNextFile is writeAtomic except in tests, which inject a failure to
+	// exercise the second step of a multi-file operation.
+	writeNextFile func(name string, data []byte, mode fs.FileMode) error
 }
 
 // Load reads every topic file and NEXT.md from root's configured directory.

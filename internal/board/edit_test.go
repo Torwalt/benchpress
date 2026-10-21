@@ -2,6 +2,7 @@ package board
 
 import (
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -309,5 +310,122 @@ func TestRemove(t *testing.T) {
 	}
 	if _, err := b.Remove("nope"); err == nil {
 		t.Error("Remove(unknown) succeeded, want error")
+	}
+}
+
+type capturedFile struct {
+	exists bool
+	data   string
+	mode   fs.FileMode
+}
+
+func captureFile(t *testing.T, name string) capturedFile {
+	t.Helper()
+	info, err := os.Stat(name)
+	if errors.Is(err, fs.ErrNotExist) {
+		return capturedFile{}
+	}
+	if err != nil {
+		t.Fatalf("stat %s: %v", name, err)
+	}
+	data, err := os.ReadFile(name)
+	if err != nil {
+		t.Fatalf("read %s: %v", name, err)
+	}
+	return capturedFile{exists: true, data: string(data), mode: info.Mode().Perm()}
+}
+
+func assertFile(t *testing.T, name string, want capturedFile) {
+	t.Helper()
+	got := captureFile(t, name)
+	if got.exists != want.exists {
+		t.Fatalf("%s exists = %v, want %v", name, got.exists, want.exists)
+	}
+	if got.data != want.data {
+		t.Errorf("%s bytes = %q, want %q", name, got.data, want.data)
+	}
+	if got.mode != want.mode {
+		t.Errorf("%s mode = %v, want %v", name, got.mode, want.mode)
+	}
+}
+
+var errNextWrite = errors.New("injected Next write failure")
+
+func TestNewNextWriteFailureRollsBack(t *testing.T) {
+	b := loadFixture(t, map[string]string{
+		"a.md": topicBody("bug", "maps", "open", "A"),
+	}, "")
+	topicPath := filepath.Join(b.Root, "docs", "workbench", "a-graphics-preset.md")
+	nextPath := b.nextPath()
+
+	beforeTopic := captureFile(t, topicPath)
+	beforeNext := captureFile(t, nextPath)
+	beforeNextMemory := cloneNext(b.Next)
+
+	b.writeNextFile = func(string, []byte, fs.FileMode) error { return errNextWrite }
+
+	if _, err := b.New("A graphics preset", "idea", "economy", true); !errors.Is(err, errNextWrite) {
+		t.Fatalf("New error = %v, want %v", err, errNextWrite)
+	}
+	assertFile(t, topicPath, beforeTopic)
+	assertFile(t, nextPath, beforeNext)
+	if !reflect.DeepEqual(b.Next, beforeNextMemory) {
+		t.Errorf("Next after rollback = %+v, want %+v", b.Next, beforeNextMemory)
+	}
+
+	b.writeNextFile = nil
+	if _, err := b.New("A graphics preset", "idea", "economy", true); err != nil {
+		t.Fatalf("retry New: %v", err)
+	}
+	if _, err := os.Stat(topicPath); err != nil {
+		t.Errorf("retried topic missing: %v", err)
+	}
+	if got, want := readFile(t, b.Root, "docs/workbench/NEXT.md"), "# Next\n\n1. [A graphics preset](a-graphics-preset.md)\n"; got != want {
+		t.Errorf("NEXT.md after retry = %q, want %q", got, want)
+	}
+}
+
+func TestRemoveNextWriteFailureRollsBack(t *testing.T) {
+	b := loadFixture(t, map[string]string{
+		"a.md": topicBody("bug", "maps", "open", "A"),
+		"b.md": topicBody("bug", "maps", "open", "B"),
+	}, "# Next\n\n1. [B](b.md)\n")
+	topicPath := filepath.Join(b.Root, "docs", "workbench", "b.md")
+	nextPath := b.nextPath()
+	if err := os.Chmod(topicPath, 0o600); err != nil {
+		t.Fatalf("chmod topic: %v", err)
+	}
+	if err := os.Chmod(nextPath, 0o640); err != nil {
+		t.Fatalf("chmod Next: %v", err)
+	}
+
+	beforeTopic := captureFile(t, topicPath)
+	beforeNext := captureFile(t, nextPath)
+	beforeNextMemory := cloneNext(b.Next)
+
+	b.writeNextFile = func(string, []byte, fs.FileMode) error { return errNextWrite }
+
+	if _, err := b.Remove("b"); !errors.Is(err, errNextWrite) {
+		t.Fatalf("Remove error = %v, want %v", err, errNextWrite)
+	}
+	assertFile(t, topicPath, beforeTopic)
+	assertFile(t, nextPath, beforeNext)
+	if !reflect.DeepEqual(b.Next, beforeNextMemory) {
+		t.Errorf("Next after rollback = %+v, want %+v", b.Next, beforeNextMemory)
+	}
+
+	b.writeNextFile = nil
+	linked, err := b.Remove("b")
+	if err != nil {
+		t.Fatalf("retry Remove: %v", err)
+	}
+	if len(linked) != 0 {
+		t.Errorf("linked = %v, want none", linked)
+	}
+	if _, err := os.Stat(topicPath); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("topic still exists after retry: %v", err)
+	}
+	if got, want := readFile(t, b.Root, "docs/workbench/NEXT.md"), "# Next\n\n"; got != want {
+		t.Errorf("NEXT.md after retry = %q, want %q", got, want)
 	}
 }

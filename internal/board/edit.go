@@ -45,6 +45,9 @@ func (b *Board) New(title, kind, area string, toNext bool) (string, error) {
 	}
 	if toNext {
 		if err := b.addNextItem(slug, title, 0); err != nil {
+			if rerr := os.Remove(full); rerr != nil && !errors.Is(rerr, fs.ErrNotExist) {
+				return "", errors.Join(err, fmt.Errorf("remove %s: %w", rel, rerr))
+			}
 			return "", err
 		}
 	}
@@ -138,16 +141,44 @@ func (b *Board) Remove(slug string) ([]string, error) {
 	}
 	linked := b.linkedBy(t)
 	full := filepath.Join(b.Root, filepath.FromSlash(t.Path))
+	i := b.nextIndex(slug)
+	if i < 0 {
+		if err := os.Remove(full); err != nil {
+			return nil, err
+		}
+		return linked, nil
+	}
+
+	topicSnap, err := snapshotFile(full)
+	if err != nil {
+		return nil, err
+	}
+	nextSnap, err := snapshotFile(b.nextPath())
+	if err != nil {
+		return nil, err
+	}
+	beforeNext := cloneNext(b.Next)
+	target := b.Next.Items[i].Target
+
 	if err := os.Remove(full); err != nil {
 		return nil, err
 	}
-	if i := b.nextIndex(slug); i >= 0 {
-		if err := b.Next.Remove(b.Next.Items[i].Target); err != nil {
-			return nil, err
+	rollback := func() error {
+		b.Next = beforeNext
+		var errs []error
+		if err := topicSnap.restore(); err != nil {
+			errs = append(errs, fmt.Errorf("restore %s: %w", t.Path, err))
 		}
-		if err := b.writeNext(); err != nil {
-			return nil, err
+		if err := nextSnap.restore(); err != nil {
+			errs = append(errs, fmt.Errorf("restore NEXT.md: %w", err))
 		}
+		return errors.Join(errs...)
+	}
+	if err := b.Next.Remove(target); err != nil {
+		return nil, errors.Join(err, rollback())
+	}
+	if err := b.writeNext(); err != nil {
+		return nil, errors.Join(err, rollback())
 	}
 	return linked, nil
 }
@@ -183,6 +214,11 @@ func (b *Board) addNextItem(slug, title string, at int) error {
 		return fmt.Errorf("%w: %d", next.ErrPosition, at)
 	}
 	item := next.Item{Target: slug + ".md", Text: nextText(slug, title)}
+	before := cloneNext(b.Next)
+	snap, err := snapshotFile(b.nextPath())
+	if err != nil {
+		return err
+	}
 	if at > 0 {
 		if err := b.Next.AddAt(item, at); err != nil {
 			return err
@@ -190,13 +226,76 @@ func (b *Board) addNextItem(slug, title string, at int) error {
 	} else {
 		b.Next.Add(item)
 	}
-	return b.writeNext()
+	if err := b.writeNext(); err != nil {
+		b.Next = before
+		if rerr := snap.restore(); rerr != nil {
+			return errors.Join(err, fmt.Errorf("restore NEXT.md: %w", rerr))
+		}
+		return err
+	}
+	return nil
+}
+
+// nextPath is the configured NEXT.md's path.
+func (b *Board) nextPath() string {
+	return filepath.Join(b.Root, filepath.FromSlash(b.Config.Dir), "NEXT.md")
 }
 
 // writeNext renders and writes NEXT.md atomically.
 func (b *Board) writeNext() error {
-	full := filepath.Join(b.Root, filepath.FromSlash(b.Config.Dir), "NEXT.md")
-	return writeAtomic(full, b.Next.Render(), 0o644)
+	write := b.writeNextFile
+	if write == nil {
+		write = writeAtomic
+	}
+	return write(b.nextPath(), b.Next.Render(), 0o644)
+}
+
+// cloneNext copies Next's items so an operation can restore them.
+func cloneNext(n next.Next) next.Next {
+	n.Items = append([]next.Item(nil), n.Items...)
+	return n
+}
+
+// fileSnapshot is a file's prior presence, bytes and mode.
+type fileSnapshot struct {
+	path   string
+	exists bool
+	data   []byte
+	mode   fs.FileMode
+}
+
+// snapshotFile records name's state before an operation mutates it.
+func snapshotFile(name string) (fileSnapshot, error) {
+	snap := fileSnapshot{path: name}
+	info, err := os.Stat(name)
+	if errors.Is(err, fs.ErrNotExist) {
+		return snap, nil
+	}
+	if err != nil {
+		return snap, err
+	}
+	snap.exists = true
+	snap.mode = info.Mode().Perm()
+	snap.data, err = os.ReadFile(name)
+	if err != nil {
+		return snap, err
+	}
+	return snap, nil
+}
+
+// restore puts the file back as it was: absent when it was absent, otherwise
+// its bytes and mode.
+func (s fileSnapshot) restore() error {
+	if !s.exists {
+		if err := os.Remove(s.path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		return nil
+	}
+	if err := writeAtomic(s.path, s.data, s.mode); err != nil {
+		return err
+	}
+	return os.Chmod(s.path, s.mode)
 }
 
 // linkedBy returns the paths of the other topics linking to target.
