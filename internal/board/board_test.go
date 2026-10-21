@@ -76,6 +76,22 @@ func TestListingOrder(t *testing.T) {
 	}
 }
 
+func TestListingNextOrder(t *testing.T) {
+	b := loadFixture(t, map[string]string{
+		"first.md":  topicBody("bug", "maps", "open", "Alpha first"),
+		"second.md": topicBody("bug", "maps", "open", "Beta second"),
+	}, "# Next\n\n1. [Beta second](second.md)\n2. [Alpha first](first.md)\n")
+
+	nextSlugs, entries := b.Listing(Filter{}, nil)
+	want := []string{"second", "first"}
+	if !reflect.DeepEqual(nextSlugs, want) {
+		t.Errorf("next = %v, want %v", nextSlugs, want)
+	}
+	if got := slugs(entries); !reflect.DeepEqual(got, want) {
+		t.Errorf("entries = %v, want %v", got, want)
+	}
+}
+
 func TestNextTargetsMustNameTopicFiles(t *testing.T) {
 	cases := []struct {
 		name    string

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -79,6 +80,54 @@ func TestLS(t *testing.T) {
 		if positions[i-1] > positions[i] {
 			t.Errorf("output out of order at %d:\n%s", i, out)
 		}
+	}
+}
+
+func TestLSNextOrder(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(root))
+	writeFile(t, root, ".benchpress.toml", "dir = \"work\"\nareas = [\"maps\"]\n")
+	writeFile(t, root, "work/NEXT.md", "# Next\n\n1. [Beta second](second.md)\n2. [Alpha first](first.md)\n")
+	writeFile(t, root, "work/first.md", "---\nkind: bug\narea: maps\nstate: open\n---\n\n# Alpha first\n")
+	writeFile(t, root, "work/second.md", "---\nkind: bug\narea: maps\nstate: open\n---\n\n# Beta second\n")
+
+	out, err := runLS(t, root)
+	if err != nil {
+		t.Fatalf("ls: %v\n%s", err, out)
+	}
+	first := strings.Index(out, "  first  ")
+	second := strings.Index(out, "  second  ")
+	if first < 0 || second < 0 {
+		t.Fatalf("entries missing from output:\n%s", out)
+	}
+	if second > first {
+		t.Errorf("Next entries out of authored order:\n%s", out)
+	}
+
+	jsonOut, err := runLS(t, root, "--json")
+	if err != nil {
+		t.Fatalf("ls --json: %v\n%s", err, jsonOut)
+	}
+	var got struct {
+		Next   []string `json:"next"`
+		Topics []struct {
+			Slug string `json:"slug"`
+		} `json:"topics"`
+	}
+	if err := json.Unmarshal([]byte(jsonOut), &got); err != nil {
+		t.Fatalf("unmarshal: %v\n%s", err, jsonOut)
+	}
+	want := []string{"second", "first"}
+	if !reflect.DeepEqual(got.Next, want) {
+		t.Errorf("next = %v, want %v", got.Next, want)
+	}
+	topicSlugs := make([]string, len(got.Topics))
+	for i, topic := range got.Topics {
+		topicSlugs[i] = topic.Slug
+	}
+	if !reflect.DeepEqual(topicSlugs, want) {
+		t.Errorf("topics = %v, want %v", topicSlugs, want)
 	}
 }
 
