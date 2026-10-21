@@ -929,6 +929,31 @@
         "reasoning": 1222,
         "cache_read": 546048
       }
+    },
+    "5.11": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:29:51+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "47b933b774a27bca910bbf332072275b62899485",
+      "commits": [
+        "5df49be6fb3507cb61fc9f09f0d1c77f81405b76 tui: pin VISUAL precedence over EDITOR"
+      ],
+      "attempts": 1,
+      "handover": "# 5.11 handover\n\n## What landed\n\n- `5df49be` — `tui: pin VISUAL precedence over EDITOR`. Adds\n  `TestEditorPrefersVisual`, which sets VISUAL and EDITOR to scripts appending\n  different markers and asserts only VISUAL's marker reaches the topic. Adds\n  `TestEditorDefaultCommand`, which checks the fallback argv is\n  `vi \u003cpath\u003e` without launching an editor.\n- Extracted `editorScript` and `synchronousEditor` from `editorModel` so the\n  new tests and the existing editor tests share the fixture. Production code\n  is unchanged.\n\n## Landmark drift\n\n- `internal/tui/actions.go:44-54` still holds `editorCommand`; there is no\n  drift in the production landmark.\n- `internal/tui/actions_test.go:265` now holds the start of the reload\n  configuration tests, not an editor test. The editor tests and helper live\n  near the end of the file, starting at `internal/tui/actions_test.go:375`.\n\n## Deviations from the work order\n\n- Used the existing synchronous `execProcess` seam via a small\n  `synchronousEditor` helper rather than duplicating the closure.\n- Added `TestEditorDefaultCommand` as specified; it was absent before.\n\n## What the next session must know\n\n- Verified both regressions make `TestEditorPrefersVisual` fail: reversing\n  VISUAL/EDITOR precedence, and ignoring VISUAL entirely. Production was\n  restored before commit; `git diff -- internal/tui/actions.go` is empty.\n- `TestEditorKeyReloads` and `TestEnterOpensEditorWhenWide` still pass after\n  the helper extraction.\n- `scripts/verify` and `go test ./...` are green at `5df49be`. No dependency,\n  DESIGN or Nix change.\n\n## Open problems\n\n- None.",
+      "session_id": "ses_e9fd90b72ffeMo7tJpOkPBt9vc",
+      "cost_usd": 0.017195112000000002,
+      "harness": "opencode",
+      "elapsed_s": 65,
+      "session_s": 61,
+      "verify_s": 1,
+      "test_s": 3,
+      "tokens": {
+        "input": 76920,
+        "output": 3270,
+        "reasoning": 2595,
+        "cache_read": 712704
+      }
     }
   }
 }
