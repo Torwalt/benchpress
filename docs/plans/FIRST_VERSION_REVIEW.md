@@ -131,8 +131,8 @@ updated.
 ### 2.1 Weigh the findings
 
 Review: triage
-Agent: claude
-Model: opus
+Agent: codex
+Model: gpt-6.1-sol
 Effort: high
 
 **Goal:** every finding confirmed or dropped, duplicates merged, each one
