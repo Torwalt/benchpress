@@ -45,6 +45,19 @@ func lintFixture(t *testing.T) string {
 	return root
 }
 
+// cleanFixture has an existing NEXT.md and no planned topics, so lint has no
+// problems.
+func cleanFixture(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(root))
+	writeFile(t, root, ".benchpress.toml", "dir = \"work\"\nareas = [\"economy\", \"maps\"]\n")
+	writeFile(t, root, "work/NEXT.md", "# Next\n\n1. [Good](good.md)\n")
+	writeFile(t, root, "work/good.md", "---\nkind: bug\narea: maps\nstate: open\n---\n\n# Good\n")
+	return root
+}
+
 // warnFixture has no NEXT.md, so lint has one warning and exits 0.
 func warnFixture(t *testing.T) string {
 	t.Helper()
@@ -136,6 +149,23 @@ func TestLintDirectoryPlanGone(t *testing.T) {
 	}
 	if len(got.Problems) != 1 || got.Problems[0].Rule != "plan-gone" {
 		t.Fatalf("problems = %+v, want exactly one plan-gone", got.Problems)
+	}
+}
+
+func TestLintCleanJSON(t *testing.T) {
+	root := cleanFixture(t)
+	out, err := runRoot(t, root, "lint", "--json")
+	if err != nil {
+		t.Fatalf("lint: %v\n%s", err, out)
+	}
+	var got struct {
+		Problems json.RawMessage `json:"problems"`
+	}
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("unmarshal: %v\n%s", err, out)
+	}
+	if string(got.Problems) != "[]" {
+		t.Errorf("problems = %s, want []", got.Problems)
 	}
 }
 
