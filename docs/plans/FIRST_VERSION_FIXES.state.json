@@ -114,6 +114,31 @@
         "reasoning": 3859,
         "cache_read": 456960
       }
+    },
+    "1.6": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T21:48:08+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "dbcf3b6f2b465eace92a7328003b2b0a77694bf5",
+      "commits": [
+        "7e579d9c22b7a2f2e53924af25962d79cfd31af7 next: preserve each item's line ending"
+      ],
+      "attempts": 1,
+      "handover": "# 1.6 Preserve each parsed Next item's line terminator\n\n## What landed\n\n- `next: preserve each item's line ending` — `Item` now retains its own\n  terminator; `Parse` records it from the source line. `Render` writes each\n  parsed item's terminator, supplies the file's detected style when an item is\n  not the final output line and has none, and preserves the absent final\n  newline. `Add`, `Remove`, `Move` and prose gathering are unchanged.\n- `TestRoundTripMixedLineEndings` covers LF-then-CRLF, CRLF-then-LF and a\n  missing final newline. `TestMoveMixedLineEndings` covers moving to the ends,\n  adding in the middle, and moving a final unterminated item so it gains a\n  terminator without welding.\n\n## Landmark drift\n\nNone. The evidence lines moved as expected: `Item` is at\n`internal/next/next.go:20`, `Parse` at 50, `Render` at 127.\n\n## Deviations from the work order\n\n- The terminator is an unexported `term string` on `Item`, not an exported\n  field. It keeps `Item` comparable (existing tests compare values) and stops\n  `board` from constructing items with a stale terminator; new items correctly\n  fall back to the file style.\n- No DESIGN change: the specified format and commands are unchanged; the fix\n  preserves bytes the design already says are kept.\n\n## What the next session must know\n\n- `Render` treats the last item as the final output line only when no tail\n  lines follow. If the source had no final newline, the final output line is\n  rendered without one even when that item carried a terminator from an\n  earlier position; this preserves the existing missing-final-newline behavior.\n- Terminators are carried by `Move` and by `Remove` because the `Item` value\n  moves intact. `Add`/`AddAt` receive items with an empty term, which `Render`\n  fills with `n.nl`, detected from the first newline in the source.\n- Tests live in `internal/next/next_test.go`.\n- `scripts/verify` and `go test ./...` were green before the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9fff6e25ffeWAQJGFxLSgQwXj",
+      "cost_usd": 0.015244788,
+      "harness": "opencode",
+      "elapsed_s": 77,
+      "session_s": 76,
+      "verify_s": 1,
+      "test_s": 1,
+      "tokens": {
+        "input": 37802,
+        "output": 4466,
+        "reasoning": 7983,
+        "cache_read": 701696
+      }
     }
   }
 }
