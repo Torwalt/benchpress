@@ -304,6 +304,24 @@ func TestListingConfiguredAreaOrder(t *testing.T) {
 	}
 }
 
+func TestListingGroupedStateOrder(t *testing.T) {
+	b := loadFixture(t, map[string]string{
+		// Titles deliberately conflict with the state order so a title-only
+		// sort cannot pass this test.
+		"open.md":    topicBody("design", "maps", "open", "Zulu open"),
+		"settled.md": topicBody("design", "maps", "settled", "Alpha settled"),
+		"planned.md": topicBody("design", "maps", "planned", "Mike planned"),
+	}, "# Next\n")
+
+	nextSlugs, entries := b.Listing(Filter{}, nil)
+	if len(nextSlugs) != 0 {
+		t.Fatalf("next = %v, want none", nextSlugs)
+	}
+	if got, want := slugs(entries), []string{"open", "settled", "planned"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("order = %v, want open, settled, planned", got)
+	}
+}
+
 func TestListingAreasAlphabeticalWhenUnconfigured(t *testing.T) {
 	root := t.TempDir()
 	writeTopic(t, root, "z.md", topicBody("bug", "zebra", "open", "Z"))
