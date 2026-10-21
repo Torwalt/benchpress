@@ -1,6 +1,7 @@
 package board
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -206,11 +207,24 @@ func TestNextAddFailures(t *testing.T) {
 		{"unknown slug", "nope", 0},
 		{"already in Next", "a", 0},
 		{"position out of range", "b", 5},
+		{"negative position", "b", -1},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if err := b.NextAdd(c.slug, c.at); err == nil {
+			before := readFile(t, b.Root, "docs/workbench/NEXT.md")
+			items := append([]next.Item(nil), b.Next.Items...)
+			err := b.NextAdd(c.slug, c.at)
+			if err == nil {
 				t.Fatalf("NextAdd(%q, %d) succeeded, want error", c.slug, c.at)
+			}
+			if c.at != 0 && !errors.Is(err, next.ErrPosition) {
+				t.Errorf("NextAdd(%q, %d) error = %v, want ErrPosition", c.slug, c.at, err)
+			}
+			if got := readFile(t, b.Root, "docs/workbench/NEXT.md"); got != before {
+				t.Errorf("NEXT.md changed on failure:\n%s", got)
+			}
+			if !reflect.DeepEqual(b.Next.Items, items) {
+				t.Errorf("Next.Items changed on failure: %+v", b.Next.Items)
 			}
 		})
 	}

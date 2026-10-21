@@ -166,6 +166,20 @@ func TestNextCmd(t *testing.T) {
 	}
 }
 
+func TestNextAddNegativePosition(t *testing.T) {
+	root := changeFixture(t)
+	writeFile(t, root, "work/victory.md", "---\nkind: design\narea: maps\nstate: open\n---\n\n# Victory\n")
+	before := readAt(t, root, "work/NEXT.md")
+
+	out, err := runRoot(t, root, "next", "add", "victory", "--at", "-1")
+	if err == nil {
+		t.Fatalf("next add --at -1 succeeded, want error\n%s", out)
+	}
+	if next := readAt(t, root, "work/NEXT.md"); next != before {
+		t.Errorf("NEXT.md changed on failure:\n%s", next)
+	}
+}
+
 func TestRmCmd(t *testing.T) {
 	root := changeFixture(t)
 	writeFile(t, root, "work/linker.md",

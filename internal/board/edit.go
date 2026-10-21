@@ -84,7 +84,8 @@ func (b *Board) SetState(slug, state, plan string) error {
 }
 
 // NextAdd adds a topic to Next at the 1-based position at, or at the end when
-// at is not positive. It fails when the topic is unknown or already in Next.
+// at is zero. It fails when the topic is unknown, already in Next, or at is
+// negative.
 func (b *Board) NextAdd(slug string, at int) error {
 	t, err := b.requireTopic(slug)
 	if err != nil {
@@ -178,6 +179,9 @@ func (b *Board) nextIndex(slug string) int {
 
 // addNextItem appends or inserts a topic's link in Next and rewrites the file.
 func (b *Board) addNextItem(slug, title string, at int) error {
+	if at < 0 {
+		return fmt.Errorf("%w: %d", next.ErrPosition, at)
+	}
 	item := next.Item{Target: slug + ".md", Text: nextText(slug, title)}
 	if at > 0 {
 		if err := b.Next.AddAt(item, at); err != nil {
