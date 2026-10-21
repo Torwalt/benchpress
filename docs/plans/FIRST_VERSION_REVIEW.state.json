@@ -1,0 +1,24 @@
+{
+  "units": {
+    "1.1": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T18:53:14+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "85f50e7c2398975b93adf8c6e10fb64304d270bd",
+      "attempts": 1,
+      "handover": "# Findings: 1.1 Configuration and root discovery\n\nReviewed: 894dd6687736..5f6d8ad278f3, 5 files. Steps: all done.\n\n## F1 — Wrong-case keys bypass the unknown-key check, and `Kinds` is silently replaced by the defaults\n\n- Class: gap\n- Confidence: high\n- Where: `internal/config/config.go:40`, `internal/config/config.go:50`\n- Situation: `.benchpress.toml` uses a key that differs only in case from a Go\n  field name, e.g. `Kinds = [\"x\"]`, `Dir = \"work\"`, or `AREAS = [\"maps\"]`.\n- Happens: BurntSushi's decoder matches those keys to the fields\n  case-insensitively, so they are not in `meta.Undecoded()` and no unknown-key\n  error is returned. For `Kinds` the value is then lost as well:\n  `meta.IsDefined(\"kinds\")` is false because the mapping key is `\"Kinds\"`, so\n  `Load` overwrites the configured list with `DefaultKinds`. A reproduced run\n  of `Load` on `Kinds = [\"x\"]` returned `Kinds:[bug change design idea]` with a\n  nil error. `Dir` and `AREAS` are likewise accepted under the wrong case.\n- Should: only the exact keys `dir`, `kinds` and `areas` are known; any other\n  key is an error naming it, per `docs/DESIGN.md` §2 (\"An unknown key is an\n  error, so a misspelt key is not silently ignored\"). Since `Undecoded` does not\n  cover this, validate the top-level names in `meta.Keys()` against the allowed\n  set instead.\n- Test: none exists; add a case-variant key (at least `Kinds = [\"x\"]`) that must\n  fail `Load`.\n\n## F2 — `FindRoot` treats a directory named `.benchpress.toml` as the config file\n\n- Class: gap\n- Confidence: medium\n- Where: `internal/config/config.go:63`\n- Situation: a directory named `.benchpress.toml` sits at or below the real\n  config file, for example `root/.benchpress.toml` (a file) and\n  `root/mid/.benchpress.toml/` (a directory), with `FindRoot` called from\n  `root/mid/a`.\n- Happens: `os.Stat` succeeds for the directory, so `FindRoot` returns `mid` as\n  the root; the real config at `root` is shadowed and never found. With no file\n  above, `Load` then fails with `read .../.benchpress.toml: is a directory`\n  rather than returning `ErrNoRoot`. Both cases reproduced.\n- Should: only a directory that holds a regular file named `.benchpress.toml`\n  counts as the root; a directory with that name is not the file, so the walk\n  should continue upward, per the unit goal and `docs/DESIGN.md` §2 (\"the first\n  directory holding `.benchpress.toml`\").\n- Test: none exists; add a test with a `.benchpress.toml` directory below a\n  real config file.",
+      "session_id": "ses_ea0a09306ffeTx98PrzUhnbRCS",
+      "cost_usd": 0.020745497999999994,
+      "harness": "opencode",
+      "elapsed_s": 144,
+      "session_s": 144,
+      "tokens": {
+        "input": 53163,
+        "output": 5272,
+        "reasoning": 12671,
+        "cache_read": 668416
+      }
+    }
+  }
+}
