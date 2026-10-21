@@ -242,6 +242,28 @@ func TestLoadMissingDir(t *testing.T) {
 	}
 }
 
+func TestListingConfiguredAreaOrder(t *testing.T) {
+	root := t.TempDir()
+	writeTopic(t, root, "maps.md", topicBody("bug", "maps", "open", "Maps"))
+	writeTopic(t, root, "economy.md", topicBody("bug", "economy", "open", "Economy"))
+	writeTopic(t, root, "ant.md", topicBody("bug", "ant", "open", "Ant"))
+	writeTopic(t, root, "zebra.md", topicBody("bug", "zebra", "open", "Zebra"))
+	cfg := &config.Config{
+		Dir:   "docs/workbench",
+		Kinds: []string{"bug", "change", "design", "idea"},
+		Areas: []string{"maps", "economy"},
+	}
+
+	b, err := Load(root, cfg)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	_, entries := b.Listing(Filter{}, nil)
+	if got := slugs(entries); !reflect.DeepEqual(got, []string{"maps", "economy", "ant", "zebra"}) {
+		t.Errorf("order = %v, want maps, economy, ant, zebra", got)
+	}
+}
+
 func TestListingAreasAlphabeticalWhenUnconfigured(t *testing.T) {
 	root := t.TempDir()
 	writeTopic(t, root, "z.md", topicBody("bug", "zebra", "open", "Z"))
