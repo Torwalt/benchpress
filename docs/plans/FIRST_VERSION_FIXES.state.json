@@ -233,6 +233,29 @@
         "reasoning": 4135,
         "cache_read": 688256
       }
+    },
+    "3.1": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T21:54:32+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "b3dce968dbd66bee38285668486dae8e88fa029d",
+      "commits": [
+        "b1c03b214d9fa7ae8886e00ad403792d6bf645bf Match Next targets to topic files"
+      ],
+      "attempts": 1,
+      "handover": "# 3.1 Match Next targets to the actual topic path\n\n## What landed\n\n- `board: Match Next targets to topic files` (`b1c03b2`) replaces the two\n  `targetSlug` helpers with `Board.NextSlug`, which rejects empty and absolute\n  targets, requires `.md`, normalizes against `Config.Dir`, and requires the\n  file's parent to be that directory.\n- Listing, `NextIndex` and lint now use it, so `./a.md` and `sub/../a.md` name\n  `a.md`; `a`, `sub/a.md` and `../outside/a.md` do not. Invalid items do not\n  enter `nextSlugs`, do not satisfy `NextIndex`, and do not make a later\n  `[A](a.md)` a duplicate.\n- Tests: `TestNextTargetsMustNameTopicFiles` in board and lint covers every\n  path form with present and absent subdirectory/outside files, plus invalid\n  then valid; `TestLSInvalidNextTarget` checks text and JSON keep `a` in its\n  area group.\n- DESIGN §4 states the accepted target shape and that a non-topic target is\n  not a Next position for any topic.\n\n## Landmark drift\n\nThe evidence pointed at `internal/board/board.go:285-289` and\n`internal/lint/lint.go:140,191-195`. The old board helper is gone; the new\n`NextSlug` is near the end of `internal/board/board.go`. Lint's local helper is\ngone and `checkNext` calls `c.board.NextSlug`.\n\n## Deviations from the work order\n\n- Used one exported board resolver instead of keeping both `targetSlug`\n  helpers. Lint already imports board, so this keeps path normalization single\n  sourced rather than duplicating the rule.\n- Added the DESIGN §4 clarification although the done-when list did not name\n  it, because the document defines what a Next item links to.\n\n## What the next session must know\n\n- `NextSlug` deliberately returns a slug for a well-shaped target even when no\n  such topic is loaded. Lint needs that to keep distinguishing\n  `links to \"b.md\", not a topic` from `links to missing topic \"b\"`; board\n  Listing and `nextIndex` apply the loaded-topic check at their own call sites.\n- An invalid item already in NEXT.md is left untouched by add/remove/move for\n  the topic it superficially resembles, because it never belonged to that\n  topic.\n- `scripts/verify` and `go test ./...` were green before the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9ffacdbfffeUAD5U6s54inEF8",
+      "cost_usd": 0.036329549999999995,
+      "harness": "opencode",
+      "elapsed_s": 158,
+      "session_s": 157,
+      "tokens": {
+        "input": 138237,
+        "output": 5283,
+        "reasoning": 15539,
+        "cache_read": 1033600
+      }
     }
   }
 }
