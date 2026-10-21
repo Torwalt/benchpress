@@ -39,6 +39,26 @@
         "reasoning": 44746,
         "cache_read": 728832
       }
+    },
+    "1.3": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T19:03:11+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "142c6e7a054cc9ce1c949c4dbaad53bc6f8dacfc",
+      "attempts": 1,
+      "handover": "# Findings: 1.3 NEXT.md\n\nReviewed: ffb7f9b388e8..a4646ff9a90b, 2 files. Steps: all done.\n\n## F1 — Adding an item to a no-item file whose last line has no newline welds the item onto that line\n\n- Class: slip\n- Confidence: high\n- Where: `internal/next/next.go:123`, `internal/next/next.go:126`\n- Situation: `NEXT.md` exists but has no items and no final newline, for example\n  `\"# Next\\n\\nSome prose.\"`, and an item is added with\n  `Add(Item{Target: \"a.md\", Text: \"[a](a.md)\"})` (or `AddAt(..., 1)`).\n- Happens: `Render` appends the stored head lines verbatim and then writes the\n  item block without checking that the last head line ended in a newline. The\n  result is `\"# Next\\n\\nSome prose.1. [a](a.md)\"`: the item is concatenated onto\n  the prose instead of forming a line of its own. The same happens with CRLF\n  (`\"# Next\\r\\n\\r\\nSome prose.\"`), where the separator should be `\\r\\n`.\n- Should: insert a line ending before the block when the last head line has\n  none, so the block goes after the last line as `docs/DESIGN.md` §4 says\n  (\"With no items yet, the block goes after the last line\") and the work order's\n  no-items case requires. Preserving the file's missing final newline for the\n  new last item is fine; the separator before the item is not.\n- Test: none exists. `TestAddAppendsAfterLastLine` uses `\"Some prose.\\n\"` and\n  `TestNoItems` never adds anything, so neither reaches the failing path. Add a\n  test that parses `\"# Next\\n\\nSome prose.\"`, adds one item, and expects a\n  newline before `1. `.\n\n## F2 — A file with mixed line endings does not round-trip byte for byte\n\n- Class: gap\n- Confidence: medium\n- Where: `internal/next/next.go:49`, `internal/next/next.go:234`,\n  `internal/next/next.go:126`\n- Situation: an unchanged `NEXT.md` whose first newline is CRLF and whose later\n  item line is LF (or vice versa), for example\n  `\"1. [a](a.md)\\r\\n2. [b](b.md)\\n\"`.\n- Happens: `newline` takes the style of the first newline only, and `Render`\n  writes every item line with that one style. The unchanged file renders as\n  `\"1. [a](a.md)\\r\\n2. [b](b.md)\\r\\n\"`: the second line's terminator changed.\n  The handover acknowledges that mixed files will not round-trip, but the work\n  order's *Done when* requires \"a round trip of an unchanged file byte for byte\"\n  without limiting it to uniform files.\n- Should: an unchanged file should render identically, including a file with\n  mixed terminators. Preserve each item's original terminator when rendering a\n  parsed item (or state the limitation in the order/design rather than claiming\n  the round-trip requirement is met).\n- Test: none exists. `TestRoundTrip`, `TestRoundTripCRLF` and\n  `TestRoundTripNoFinalNewline` all use a single terminator style. Add a mixed\n  LF/CRLF round-trip case.",
+      "session_id": "ses_ea0998781ffeR4h4vogvFKWWFL",
+      "cost_usd": 0.04299862199999999,
+      "harness": "opencode",
+      "elapsed_s": 279,
+      "session_s": 279,
+      "tokens": {
+        "input": 78373,
+        "output": 4707,
+        "reasoning": 38959,
+        "cache_read": 1681024
+      }
     }
   }
 }
