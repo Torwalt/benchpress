@@ -883,6 +883,29 @@
         "reasoning": 2430,
         "cache_read": 582784
       }
+    },
+    "5.9": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:27:56+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "97274f3ef2d5681bef0270f55458db141abdd2c8",
+      "commits": [
+        "570a773496ca0ee7c1f8d93abaf9b3bdb1afcde6 tui: assert editor exit refreshes the loaded body"
+      ],
+      "attempts": 1,
+      "handover": "# 5.9 handover\n\n## What landed\n\n- `570a773` — `tui: assert editor exit refreshes the loaded body`. Strengthens\n  `TestEditorKeyReloads` (still at `internal/tui/actions_test.go:374`) to check\n  `m.bodies[\"alpha\"]`, `m.previewSlug` and the rendered preview after the\n  returned `editorClosedMsg` is processed. The existing synchronous\n  `execProcess`, editor script, disk and status assertions are unchanged.\n- No production code changed; this was a coverage-only gap.\n\n## Landmark drift\n\n- The cited `actions_test.go:255-283` now holds `TestReloadReadsConfiguration`;\n  `TestEditorKeyReloads` has moved to line 374 after later units' tests grew\n  the file. Its structure and seam are as the unit describes.\n\n## Deviations from the work order\n\n- None. Also asserted `previewSlug == \"alpha\"` to pin that the preview was\n  re-synced rather than left on an old rendering.\n\n## What the next session must know\n\n- Verified the strengthened test fails when `m.reload(false)` is removed from\n  the `editorClosedMsg` case in `internal/tui/model.go`: the body and preview\n  assertions fail while the disk and status assertions still pass, which is\n  exactly the gap the unit described. Production was restored before commit.\n- `scripts/verify` and `go test ./...` are green at `570a773`. No dependency\n  change, so no Nix run was needed.\n\n## Open problems\n\n- None.",
+      "session_id": "ses_e9fda6658ffe1AFJPVvzXZm6Ob",
+      "cost_usd": 0.013077545999999999,
+      "harness": "opencode",
+      "elapsed_s": 38,
+      "session_s": 37,
+      "tokens": {
+        "input": 63863,
+        "output": 2394,
+        "reasoning": 656,
+        "cache_read": 556032
+      }
     }
   }
 }
