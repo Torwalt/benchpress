@@ -603,6 +603,29 @@
         "reasoning": 1031,
         "cache_read": 427008
       }
+    },
+    "4.6": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:12:21+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "796966134c843765408163a44f7431695450dbe4",
+      "commits": [
+        "4df47bf1660b494ac2cf68779a6cc7040087d925 init: clean up failed creates and replace skills atomically"
+      ],
+      "attempts": 1,
+      "handover": "# 4.6 handover\n\n## What landed\n\n- `4df47bf` — `init: clean up failed creates and replace skills atomically`.\n  `createOnly` now removes the target it just created when its write or close\n  fails. The `--skill` rewrite goes through a new local `writeAtomic`: a\n  same-directory temporary file, chmod to the destination's existing mode, and\n  a rename. Tests inject partial write and close failures, assert the partial\n  target is gone or the old skill bytes and mode are intact, then retry and\n  require the complete `benchpress.Skill`.\n\n## Landmark drift\n\n`createOnly` is now at `cmd/benchpress/init.go:153`; the rewrite branch at\n`:92-96`. Only line numbers moved; the cited branch and function were present.\n\n## Deviations from the work order\n\n- Added `TestCreateOnlyLeavesExistingFile` in addition to the close-failure\n  tests, to pin O_EXCL no-overwrite directly.\n- Added a close-failure companion for the skill rewrite, beyond the two named\n  tests, because the unit explicitly requires close-failure cleanup.\n- The failure seam is two package-level function vars (`writeData`, `closeFile`)\n  rather than process-wide limits, as the unit permitted.\n\n## What the next session must know\n\n- With the old direct `os.WriteFile` rewrite, the injected failure seam is not\n  used, so the rewrite tests fail on the missing error rather than on\n  truncation. They still fail against the old behavior, but a future seam\n  refactor must keep the injection inside the replacement path.\n- `writeAtomic` in `cmd/benchpress` mirrors `internal/board.writeAtomic`; they\n  are deliberately separate local helpers because packages differ.\n- No DESIGN change: no format, command, key, lint rule or package boundary\n  changed. DESIGN §7's init description remains accurate.\n\n## Open problems\n\nNone. `scripts/verify` and `go test ./...` are green at `4df47bf`.",
+      "session_id": "ses_e9fe99df8ffe2gnqeVL70sDGvt",
+      "cost_usd": 0.022261440000000004,
+      "harness": "opencode",
+      "elapsed_s": 101,
+      "session_s": 100,
+      "tokens": {
+        "input": 71856,
+        "output": 5631,
+        "reasoning": 8269,
+        "cache_read": 1047680
+      }
     }
   }
 }
