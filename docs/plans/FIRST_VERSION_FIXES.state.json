@@ -835,6 +835,31 @@
         "reasoning": 7599,
         "cache_read": 898560
       }
+    },
+    "5.7": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:26:28+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "de046456dd3b81b79b92ca820a3fb7bd9cb4ea3a",
+      "commits": [
+        "a6d33a633103880be8d4e42ef442758541afaf9c tui: reload configuration with the workbench"
+      ],
+      "attempts": 1,
+      "handover": "# 5.7 handover\n\n## What landed\n\n- `a6d33a6` — `tui: reload configuration with the workbench`.\n  `reload` now calls `config.Load` at `m.board.Root` before `board.Load`, so\n  explicit `r`, post-operation reloads and editor-exit reloads all see config\n  edits. A valid config replaces `dir`, `kinds` and `areas`; a changed `dir`\n  loads the new workbench and later writes go there. Selection stays on the same\n  slug when the new workbench still has it.\n- `reload` takes a `saved bool`. On invalid config, an explicit/editor reload\n  returns the config error before loading, preserving the prior board, derived\n  data and config. A reload after a successful board operation falls back to the\n  last coherent config, publishes the disk (so the saved change shows), then\n  returns the config error; callers keep the `change saved; reload failed:` and\n  `reload failed:` prefixes.\n- DESIGN §9 describes config reloads and the invalid-config saved-change case;\n  §10 records the TUI's read-only `config` dependency. TUI fixtures now write\n  `.benchpress.toml` and load it through `config.Load`.\n- New tests `TestReloadReadsConfiguration`, `TestReloadSwitchesConfiguredDirectory`\n  and `TestReloadInvalidConfiguration`; all three failed before the change.\n\n## Landmark drift\n\n- `reload` moved from `actions.go:72` to `actions.go:76` and its call sites are\n  `actions.go:66`, `model.go:165` and `model.go:233`. The cited\n  `cmd/benchpress/ls.go:62-66` still loads config per command.\n- No other landmark moved. No dependency or go.mod change, so no Nix run.\n\n## Deviations from the work order\n\n- D6's \"After a successful operation, also attempt a disk load\" is expressed as\n  an explicit `saved` argument to `reload`, because the same method serves the\n  explicit and editor paths, which must preserve prior data on an invalid\n  config instead of publishing the disk.\n\n## What the next session must know\n\n- `reload` returns the config error before plan/lint errors when both occur.\n  Lint still runs after a saved-change load under the old config, so the summary\n  reflects the published disk rather than `lint unavailable`.\n- Config is read at `m.board.Root`, never rediscovered. Tests that construct a\n  `board.Board` directly must still create `.benchpress.toml` for reloads to\n  succeed; production no longer defaults a missing file.\n- `change` remains the only caller passing `true`; editor exits and `r` pass\n  `false`. Keep that split if further reload states are added.\n- `scripts/verify` and `go test ./...` are green at `a6d33a6`.\n\n## Open problems\n\n- None.",
+      "session_id": "ses_e9fdd5f2bffenwJRTiQN4YECXY",
+      "cost_usd": 0.036111276,
+      "harness": "opencode",
+      "elapsed_s": 145,
+      "session_s": 143,
+      "verify_s": 1,
+      "test_s": 1,
+      "tokens": {
+        "input": 121434,
+        "output": 8228,
+        "reasoning": 10934,
+        "cache_read": 2132992
+      }
     }
   }
 }
