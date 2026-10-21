@@ -978,6 +978,29 @@
         "reasoning": 834,
         "cache_read": 429568
       }
+    },
+    "6.1": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:30:55+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "b3dd471c04971c6f73a2252fd535250e3c4a9f67",
+      "commits": [
+        "ba6c2b77c97489f600781faf7703a339aef8d962 board: describe its file-writing role in the package comment"
+      ],
+      "attempts": 1,
+      "handover": "# 6.1 handover\n\n## What landed\n\n- `ba6c2b7` — `board: describe its file-writing role in the package comment`.\n  Replaces the false \"nothing writes\" claim in `internal/board/board.go` with\n  loading, `ls` ordering and the §7 file-writing operations, matching DESIGN §10.\n\n## Landmark drift\n\n- None. The package comment was still at `internal/board/board.go:1-2`.\n\n## Deviations from the work order\n\n- None. Only the package comment changed; no test or API change, as instructed.\n\n## What the next session must know\n\n- `internal/board/edit.go:1-2` carries a second, file-level comment describing\n  the same write operations; it was left alone because the unit scoped the work\n  to `board.go`'s package comment. It remains accurate.\n- `rg 'nothing writes' internal/board` now has no matches.\n- `scripts/verify` and `go test ./...` are green at `ba6c2b7`.\n- No DESIGN, dependency or Nix change was needed.\n\n## Open problems\n\n- None.",
+      "session_id": "ses_e9fd76be8ffeMC5Kkn52CjG0e8",
+      "cost_usd": 0.004505052,
+      "harness": "opencode",
+      "elapsed_s": 22,
+      "session_s": 21,
+      "tokens": {
+        "input": 18382,
+        "output": 1087,
+        "reasoning": 576,
+        "cache_read": 249984
+      }
     }
   }
 }
