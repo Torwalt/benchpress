@@ -906,6 +906,29 @@
         "reasoning": 656,
         "cache_read": 556032
       }
+    },
+    "5.10": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:28:46+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "376f3f18eaf5e0ddc7531a37bc61cde80acd49cf",
+      "commits": [
+        "acac1122936cedeb7f2d67d64593d130c88e508f tui: test enter opens the editor in the wide layout"
+      ],
+      "attempts": 1,
+      "handover": "# 5.10 handover\n\n## What landed\n\n- `acac112` — `tui: test enter opens the editor in the wide layout`. Adds\n  `TestEnterOpensEditorWhenWide` in `internal/tui/actions_test.go`, at width\n  exactly 100, asserting Enter starts the editor (non-nil `tea.Cmd`), the\n  script appends to the file, and `m.bodies[\"alpha\"]` holds the reloaded edit.\n- Extracted the existing editor script/setup from `TestEditorKeyReloads` into\n  `editorModel`, shared by both tests. No production code changed.\n\n## Landmark drift\n\n- The cited `model.go:232-238` now holds the wide `enter` branch at\n  `internal/tui/model.go:236-242`; it is otherwise as the unit describes.\n- `TestEditorKeyReloads` is at `internal/tui/actions_test.go:399` after the\n  helper extraction. `TestNarrowHidesPreviewAndEnterToggles` remains at\n  `internal/tui/model_test.go:336`.\n\n## Deviations from the work order\n\n- Chose the \"add a separate action test\" route, with a width of exactly 100 to\n  pin the boundary at `narrowWidth`, and extracted the shared fixture instead\n  of duplicating the script setup. The existing `e` test's assertions are\n  unchanged.\n\n## What the next session must know\n\n- Confirmed the focused test fails when the wide `else` branch in the `enter`\n  case is deleted: `enter returned no command in the wide layout`. Production\n  was restored before commit; `git diff` for `model.go` is empty.\n- `scripts/verify` and `go test ./...` are green at `acac112`. No dependency or\n  Nix change.\n- `newActionModel` already sizes the model at 120, so the new test first sends\n  a `WindowSizeMsg{Width: 100}` to test the boundary rather than a wider size.\n\n## Open problems\n\n- None.",
+      "session_id": "ses_e9fd9d0e0ffexzAdcDpepW1526",
+      "cost_usd": 0.011026494,
+      "harness": "opencode",
+      "elapsed_s": 51,
+      "session_s": 50,
+      "tokens": {
+        "input": 44213,
+        "output": 3372,
+        "reasoning": 1222,
+        "cache_read": 546048
+      }
     }
   }
 }
