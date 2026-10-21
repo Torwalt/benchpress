@@ -377,6 +377,14 @@ func collectLinks(line string, number int, out *[]Link) {
 		switch line[i] {
 		case '`':
 			i = skipCodeSpan(line, i)
+		case '!':
+			if i+1 < len(line) && line[i+1] == '[' && !escaped(line, i) {
+				if end, ok := imageEnd(line, i+1); ok {
+					i = end
+					continue
+				}
+			}
+			i++
 		case '[':
 			target, end, ok := parseLink(line, i)
 			if !ok {
@@ -391,6 +399,53 @@ func collectLinks(line string, number int, out *[]Link) {
 			i++
 		}
 	}
+}
+
+// imageEnd returns the index just past the image token whose bracket opens at
+// i, covering its alt text and its target.
+func imageEnd(line string, i int) (int, bool) {
+	closeText := closing(line, i, '[', ']')
+	if closeText < 0 {
+		return 0, false
+	}
+	j := closeText + 1
+	if j >= len(line) || line[j] != '(' {
+		return 0, false
+	}
+	closeTarget := closing(line, j, '(', ')')
+	if closeTarget < 0 {
+		return 0, false
+	}
+	return closeTarget + 1, true
+}
+
+// closing returns the index matching the delimiter opened at i, or -1.
+func closing(line string, i int, open, close byte) int {
+	depth := 0
+	for j := i; j < len(line); j++ {
+		if escaped(line, j) {
+			continue
+		}
+		switch line[j] {
+		case open:
+			depth++
+		case close:
+			depth--
+			if depth == 0 {
+				return j
+			}
+		}
+	}
+	return -1
+}
+
+// escaped reports whether the byte at i follows an odd run of backslashes.
+func escaped(line string, i int) bool {
+	n := 0
+	for j := i - 1; j >= 0 && line[j] == '\\'; j-- {
+		n++
+	}
+	return n%2 == 1
 }
 
 // skipCodeSpan returns the index just past the code span opened at i, or past

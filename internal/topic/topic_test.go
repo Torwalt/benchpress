@@ -203,6 +203,38 @@ func TestParseLinkTargets(t *testing.T) {
 	}
 }
 
+func TestImagesAreNotLinks(t *testing.T) {
+	src := "---\nkind: bug\narea: maps\nstate: open\n---\n\n" +
+		"# Images\n\n" +
+		"![alt](missing.png) ![diagram](missing.md) [real](real.md)\n\n" +
+		"![see [inner](inner.md)](missing.png) [after](after.md)\n"
+	got, issues := Parse([]byte(src))
+	if len(issues) != 0 {
+		t.Fatalf("issues = %v, want none", issues)
+	}
+	want := []Link{{Target: "real.md", Line: 9}, {Target: "after.md", Line: 11}}
+	if len(got.Links) != len(want) {
+		t.Fatalf("Links = %v, want %v", got.Links, want)
+	}
+	for i, l := range want {
+		if got.Links[i] != l {
+			t.Errorf("Links[%d] = %v, want %v", i, got.Links[i], l)
+		}
+	}
+
+	line := "![alt](missing.png) [real](real.md) \\![literal](also.md)"
+	gotLinks := LineLinks(line, 3)
+	wantLinks := []Link{{Target: "real.md", Line: 3}, {Target: "also.md", Line: 3}}
+	if len(gotLinks) != len(wantLinks) {
+		t.Fatalf("LineLinks = %v, want %v", gotLinks, wantLinks)
+	}
+	for i, l := range wantLinks {
+		if gotLinks[i] != l {
+			t.Errorf("LineLinks[%d] = %v, want %v", i, gotLinks[i], l)
+		}
+	}
+}
+
 func TestSetReplaceAndAppend(t *testing.T) {
 	base := "---\nkind: bug\narea: maps\nstate: open\n---\n\n# Title\n"
 	tests := []struct {

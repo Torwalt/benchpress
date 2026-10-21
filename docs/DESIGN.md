@@ -102,7 +102,9 @@ heading with no text is not a title.
 
 **Links.** Topics link to each other with relative Markdown links,
 `[Drafts strand](drafts-strand.md)`, optionally with a `#fragment`. Links with a
-scheme (`https:`), absolute paths and bare fragments are not checked.
+scheme (`https:`), absolute paths and bare fragments are not checked. Image
+tokens, `![alt](target)`, are not links and are not checked, in a topic body or
+in Next item text; an ordinary link beside an image is still checked.
 
 **Editing.** When benchpress changes a topic it changes only the front-matter
 lines it must — replacing a key's line in place, appending a new key just before
