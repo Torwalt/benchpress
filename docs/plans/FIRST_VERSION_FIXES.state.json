@@ -1001,6 +1001,29 @@
         "reasoning": 576,
         "cache_read": 249984
       }
+    },
+    "6.2": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:31:48+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "5f1ade272b57c733e1780f8342603a0b359dee19",
+      "commits": [
+        "55cb04ef74b3f71e0fecb6a79eb71448cb17e6ee workbench: qualify the deferred cross-branch view's topic files"
+      ],
+      "attempts": 1,
+      "handover": "# 6.2 handover\n\n## What landed\n\n- `55cb04e` — `workbench: qualify the deferred cross-branch view's topic files`.\n  Rewrites the topic's **Now** sentence to say `internal/board/board.go` lists\n  every `*.md` directly in the configured `dir`, excluding `README.md` and\n  `NEXT.md`, instead of claiming every `*.md`. The deferred questions and the\n  postponement decision are untouched.\n\n## Landmark drift\n\n- The evidence cited `internal/board/board.go:86-93` for the filtering loop; it\n  is now lines 90-97 (the `for` loop and its three `continue` conditions). The\n  behavior and its match with DESIGN §2 are unchanged.\n\n## Deviations from the work order\n\n- None. Only the Now wording changed; no DESIGN edit was needed because §2\n  already states the contract and the topic now agrees with it.\n\n## What the next session must know\n\n- Final verification all green at `55cb04e`: `scripts/verify`, `go test ./...`,\n  `nix build .#benchpress`, `nix flake check`, `nix run . -- lint` (exit 0) and\n  `nix run . -- ls` (lists the topic under `git`).\n- Textual comparison: DESIGN §2 says every other `*.md` directly in `dir` is a\n  topic, subdirectories and other files are ignored, `README.md` is ignored and\n  `NEXT.md` is the order. The topic now names the same direct-only set and both\n  exclusions.\n- `nix run` emitted a harmless, ignored Nix SQLite eval-cache \"busy\" warning\n  once under parallel use; rerun serially confirmed lint exit 0.\n- Working tree clean; no Nix, dependency or test changes.\n\n## Open problems\n\n- None.",
+      "session_id": "ses_e9fd715f6ffeQV3jl4GWa99t2x",
+      "cost_usd": 0.010427262,
+      "harness": "opencode",
+      "elapsed_s": 53,
+      "session_s": 52,
+      "tokens": {
+        "input": 43661,
+        "output": 2640,
+        "reasoning": 1508,
+        "cache_read": 463104
+      }
     }
   }
 }
