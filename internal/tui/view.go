@@ -140,8 +140,12 @@ func (m *Model) statusView() string {
 	return statusStyle.Render(truncate(strings.Join(parts, "  ·  "), m.width))
 }
 
-// lintSummary is the counts of §6's problems, or "lint clean".
+// lintSummary is the counts of §6's problems, or "lint clean"; it is
+// "lint unavailable" until a reload completes both plan lookup and lint.
 func (m *Model) lintSummary() string {
+	if !m.lintAvailable {
+		return "lint unavailable"
+	}
 	var errs, warns int
 	for _, p := range m.problems {
 		if p.Severity == lint.Error {

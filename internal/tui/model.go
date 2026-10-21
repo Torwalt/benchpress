@@ -75,8 +75,9 @@ type Model struct {
 	newTitle string
 	newKind  string
 
-	confirming  bool
-	confirmSlug string
+	confirming    bool
+	confirmSlug   string
+	lintAvailable bool
 
 	execProcess execProcessFunc
 
@@ -104,15 +105,16 @@ type Model struct {
 // New builds the board model from a loaded board and its lint problems.
 func New(opts Options) *Model {
 	m := &Model{
-		board:       opts.Board,
-		planFound:   opts.PlanFound,
-		problems:    opts.Problems,
-		locator:     opts.Locator,
-		errPaths:    errorPaths(opts.Problems),
-		bodies:      topicBodies(opts.Board),
-		grouping:    groupings[0],
-		input:       textinput.New(),
-		execProcess: tea.ExecProcess,
+		board:         opts.Board,
+		planFound:     opts.PlanFound,
+		problems:      opts.Problems,
+		locator:       opts.Locator,
+		errPaths:      errorPaths(opts.Problems),
+		bodies:        topicBodies(opts.Board),
+		grouping:      groupings[0],
+		input:         textinput.New(),
+		execProcess:   tea.ExecProcess,
+		lintAvailable: true,
 	}
 	m.rebuild()
 	return m
@@ -161,7 +163,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = msg.err.Error()
 		}
 		if err := m.reload(); err != nil {
-			m.status = err.Error()
+			m.status = "reload failed: " + err.Error()
 		}
 		return m, nil
 	}
@@ -229,7 +231,7 @@ func (m *Model) key(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "r":
 		if err := m.reload(); err != nil {
-			m.status = err.Error()
+			m.status = "reload failed: " + err.Error()
 		}
 		return m, nil
 	case "e":

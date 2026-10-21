@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -279,5 +280,134 @@ func TestEditorKeyReloads(t *testing.T) {
 	}
 	if m.status != "" {
 		t.Errorf("status = %q, want empty after a successful edit", m.status)
+	}
+}
+
+// failingLocator is a plan lookup that always fails, like a git corruption
+// after the files themselves have loaded.
+type failingLocator struct{ err error }
+
+func (l failingLocator) Find(context.Context, ...string) (map[string][]string, error) {
+	return nil, l.err
+}
+
+// locatorFunc lets a test change a later reload's answer.
+type locatorFunc func(context.Context, ...string) (map[string][]string, error)
+
+func (f locatorFunc) Find(ctx context.Context, paths ...string) (map[string][]string, error) {
+	return f(ctx, paths...)
+}
+
+func TestSavedChangeSurvivesLocatorFailure(t *testing.T) {
+	b := loadActionBoard(t, map[string]string{
+		"alpha.md": topicWithBody("bug", "economy", "open", "Alpha", "the old body phrase\n"),
+		"beta.md":  "---\nkind: design\narea: maps\nstate: planned\nplan: docs/plans/B.md\n---\n\n# Beta\n",
+	}, "")
+	m := New(Options{Board: b, Locator: failingLocator{err: errors.New("git boom")}})
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	wantSlug(t, m, "alpha")
+
+	writeTopic(t, b.Root, "alpha.md", topicWithBody("bug", "economy", "open", "Alpha", "the fresh kiwi phrase\n"))
+	pressRune(m, 's')
+
+	disk := readAt(t, b.Root, "docs/workbench/alpha.md")
+	if !strings.Contains(disk, "state: settled\n") || !strings.Contains(disk, "the fresh kiwi phrase") {
+		t.Fatalf("disk after s =\n%s", disk)
+	}
+	e, ok := m.selectedEntry()
+	if !ok || e.Slug != "alpha" {
+		t.Fatalf("selected entry = %+v, %v; want alpha", e, ok)
+	}
+	if e.State != "settled" {
+		t.Errorf("entry state = %q, want settled", e.State)
+	}
+	if got := string(m.bodies["alpha"]); !strings.Contains(got, "the fresh kiwi phrase") {
+		t.Errorf("bodies[alpha] = %q, want the reloaded body", got)
+	}
+	if m.previewSlug != "alpha" {
+		t.Errorf("preview slug = %q, want alpha", m.previewSlug)
+	}
+	if got := plainView(m.preview.View()); !strings.Contains(got, "fresh kiwi phrase") {
+		t.Errorf("preview does not show the reloaded body:\n%s", got)
+	}
+	if !strings.Contains(m.status, "change saved") || !strings.Contains(m.status, "reload failed") || !strings.Contains(m.status, "git boom") {
+		t.Errorf("status = %q, want a saved-change reload failure", m.status)
+	}
+	if got := m.lintSummary(); got != "lint unavailable" {
+		t.Errorf("lint summary = %q, want lint unavailable", got)
+	}
+
+	pressRune(m, 's')
+	if m.prompt != promptPlan {
+		t.Errorf("second s prompt = %v, want plan", m.prompt)
+	}
+}
+
+func TestReloadFailureInvalidatesDerivedData(t *testing.T) {
+	b := loadActionBoard(t, map[string]string{
+		"alpha.md": "---\nkind: bug\narea: economy\nstate: planned\nplan: docs/plans/A.md\n---\n\n# Alpha\n",
+	}, "# Next\n")
+	fail := false
+	loc := locatorFunc(func(_ context.Context, paths ...string) (map[string][]string, error) {
+		if fail {
+			return nil, errors.New("git boom")
+		}
+		found := make(map[string][]string, len(paths))
+		for _, p := range paths {
+			found[p] = []string{"raised-ground"}
+		}
+		return found, nil
+	})
+	m := New(Options{
+		Board:     b,
+		PlanFound: map[string][]string{"docs/plans/A.md": {"raised-ground"}},
+		Locator:   loc,
+	})
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	wantSlug(t, m, "alpha")
+	if got := m.lintSummary(); got != "lint clean" {
+		t.Fatalf("initial lint summary = %q, want clean", got)
+	}
+
+	fail = true
+	pressRune(m, 'r')
+
+	if len(m.planFound) != 0 {
+		t.Errorf("planFound = %v, want cleared after a failed plan lookup", m.planFound)
+	}
+	if len(m.problems) != 0 {
+		t.Errorf("problems = %v, want cleared after a failed refresh", m.problems)
+	}
+	if got := m.lintSummary(); got != "lint unavailable" {
+		t.Errorf("lint summary = %q, want lint unavailable", got)
+	}
+	view := plainView(m.View())
+	if strings.Contains(view, "lint clean") {
+		t.Errorf("view claims lint clean after a failed refresh:\n%s", view)
+	}
+	if !strings.Contains(view, "lint unavailable") {
+		t.Errorf("view does not show lint unavailable:\n%s", view)
+	}
+	if strings.Contains(view, "on raised-ground") {
+		t.Errorf("view still shows the stale plan location:\n%s", view)
+	}
+	if !strings.Contains(m.status, "reload failed") {
+		t.Errorf("status = %q, want reload failed", m.status)
+	}
+	if e, ok := m.selectedEntry(); !ok || len(e.PlanFound) != 0 {
+		t.Errorf("entry plan locations = %v, want none", e.PlanFound)
+	}
+
+	fail = false
+	pressRune(m, 'r')
+	if got := m.lintSummary(); got != "lint clean" {
+		t.Errorf("recovered lint summary = %q, want clean", got)
+	}
+	e, ok := m.selectedEntry()
+	if !ok || len(e.PlanFound) != 1 || e.PlanFound[0] != "raised-ground" {
+		t.Errorf("recovered plan locations = %v, want raised-ground", e.PlanFound)
+	}
+	if view := plainView(m.View()); strings.Contains(view, "lint unavailable") {
+		t.Errorf("view still shows lint unavailable after recovery:\n%s", view)
 	}
 }

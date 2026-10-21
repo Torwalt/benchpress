@@ -63,7 +63,7 @@ func (m *Model) change(op func() error) {
 		return
 	}
 	if err := m.reload(); err != nil {
-		m.status = err.Error()
+		m.status = "change saved; reload failed: " + err.Error()
 	}
 }
 
@@ -77,23 +77,36 @@ func (m *Model) reload() error {
 	if err != nil {
 		return err
 	}
-	found, err := m.findPlans(b)
-	if err != nil {
-		return err
-	}
-	problems, err := lint.Check(context.Background(), b, b.Exists, planLocator(found))
-	if err != nil {
-		return err
+
+	// Files loaded: publish them even when the derived data below fails, so
+	// the board never shows state older than the disk.
+	found, findErr := m.findPlans(b)
+	var problems []lint.Problem
+	var lintErr error
+	if findErr == nil {
+		problems, lintErr = lint.Check(context.Background(), b, b.Exists, planLocator(found))
 	}
 	m.board = b
 	m.planFound = found
-	m.problems = problems
-	m.errPaths = errorPaths(problems)
+	if findErr != nil {
+		m.planFound = nil
+	}
+	if findErr == nil && lintErr == nil {
+		m.problems = problems
+		m.lintAvailable = true
+	} else {
+		m.problems = nil
+		m.lintAvailable = false
+	}
+	m.errPaths = errorPaths(m.problems)
 	m.bodies = topicBodies(b)
 	m.previewSlug = "" // force the preview to re-render the reloaded body
 	m.rebuild()
 	m.afterMove()
-	return nil
+	if findErr != nil {
+		return findErr
+	}
+	return lintErr
 }
 
 // findPlans locates every planned topic's plan through the board's locator.

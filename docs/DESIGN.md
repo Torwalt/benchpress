@@ -267,6 +267,16 @@ Every change goes through the same operations as the commands in §7 and is
 written to disk at once; the board then reloads and re-runs lint. A failed
 operation shows its error in the status line and changes nothing.
 
+**Reloading.** Once `board.Load` has succeeded, the reload publishes that board,
+its bodies, rows and preview even if the plan lookup or lint then fails. Plan
+locations and lint results that a failed lookup leaves unavailable are cleared
+rather than shown as current, and the status line says `lint unavailable` in
+place of a lint summary until a reload completes both the plan lookup and lint.
+A successful change followed by a refresh error reports `change saved; reload
+failed: …`; an explicit reload reports `reload failed: …`. A read failure
+before any new board is available keeps the previous board and reports the
+refresh failure.
+
 ## 10. Packages
 
 ```
