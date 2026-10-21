@@ -3,8 +3,10 @@ package tui
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -239,5 +241,165 @@ func TestViewMarksLintErrorRows(t *testing.T) {
 		if r.entry.Slug != "taxes" && marked {
 			t.Errorf("%s row wrongly marked: %q", r.entry.Slug, m.topicText(r.entry, ""))
 		}
+	}
+}
+
+// workbenchFiles reads the fixture workbench so a test can prove a key wrote
+// nothing.
+func workbenchFiles(t *testing.T, root string) map[string]string {
+	t.Helper()
+	dir := filepath.Join(root, "docs", "workbench")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read workbench: %v", err)
+	}
+	out := make(map[string]string, len(entries))
+	for _, e := range entries {
+		data, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			t.Fatalf("read %s: %v", e.Name(), err)
+		}
+		out[e.Name()] = string(data)
+	}
+	return out
+}
+
+// isQuitCmd reports whether executing cmd yields tea.QuitMsg.
+func isQuitCmd(cmd tea.Cmd) bool {
+	if cmd == nil {
+		return false
+	}
+	_, ok := cmd().(tea.QuitMsg)
+	return ok
+}
+
+// modeCase enters one of the board's modes.
+type modeCase struct {
+	name  string
+	kind  promptKind
+	setup func(*Model)
+}
+
+// promptCases enters every prompt with its initial input.
+func promptCases() []modeCase {
+	prompts := []struct {
+		name  string
+		kind  promptKind
+		label string
+		value string
+	}{
+		{"plan prompt", promptPlan, "plan: ", "docs/plans/"},
+		{"title prompt", promptNewTitle, "title: ", ""},
+		{"kind prompt", promptNewKind, "kind: ", ""},
+		{"area prompt", promptNewArea, "area: ", ""},
+	}
+	cases := make([]modeCase, 0, len(prompts))
+	for _, p := range prompts {
+		cases = append(cases, modeCase{p.name, p.kind, func(m *Model) {
+			m.prompt = p.kind
+			m.setInput(p.label, p.value)
+			m.input.Focus()
+		}})
+	}
+	return cases
+}
+
+func TestQuitFromEveryMode(t *testing.T) {
+	cases := []modeCase{
+		{"normal", promptNone, func(*Model) {}},
+		{"help", promptNone, func(m *Model) { pressRune(m, '?') }},
+		{"filter", promptNone, func(m *Model) { pressRune(m, '/') }},
+		{"delete confirmation", promptNone, func(m *Model) { pressRune(m, 'd') }},
+	}
+	cases = append(cases, promptCases()...)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := newTestModel(t, Options{})
+			before := workbenchFiles(t, m.board.Root)
+			tc.setup(m)
+			_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+			if !isQuitCmd(cmd) {
+				t.Fatalf("ctrl+c in %s did not return tea.QuitMsg", tc.name)
+			}
+			if after := workbenchFiles(t, m.board.Root); !reflect.DeepEqual(before, after) {
+				t.Errorf("ctrl+c in %s wrote to the workbench", tc.name)
+			}
+		})
+	}
+}
+
+func TestQQuitsFromHelpAndConfirmation(t *testing.T) {
+	cases := []modeCase{
+		{"help", promptNone, func(m *Model) { pressRune(m, '?') }},
+		{"delete confirmation", promptNone, func(m *Model) { pressRune(m, 'd') }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := newTestModel(t, Options{})
+			before := workbenchFiles(t, m.board.Root)
+			tc.setup(m)
+			_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+			if !isQuitCmd(cmd) {
+				t.Fatalf("q in %s did not return tea.QuitMsg", tc.name)
+			}
+			if after := workbenchFiles(t, m.board.Root); !reflect.DeepEqual(before, after) {
+				t.Errorf("q in %s wrote to the workbench", tc.name)
+			}
+		})
+	}
+}
+
+func TestQIsTextInFilterAndPrompts(t *testing.T) {
+	t.Run("filter", func(t *testing.T) {
+		m := newTestModel(t, Options{})
+		pressRune(m, '/')
+		_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+		if isQuitCmd(cmd) {
+			t.Fatalf("q quit from the filter instead of being text")
+		}
+		if m.filter != "q" || !m.filtering {
+			t.Errorf("filter = %q, filtering = %v; want %q and true", m.filter, m.filtering, "q")
+		}
+	})
+	for _, tc := range promptCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			m := newTestModel(t, Options{})
+			tc.setup(m)
+			_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+			if isQuitCmd(cmd) {
+				t.Fatalf("q quit from the %s instead of being text", tc.name)
+			}
+			if !strings.Contains(m.input.Value(), "q") {
+				t.Errorf("%s input = %q, want it to contain q", tc.name, m.input.Value())
+			}
+			if m.prompt != tc.kind {
+				t.Errorf("%s prompt = %v, want %v", tc.name, m.prompt, tc.kind)
+			}
+		})
+	}
+}
+
+func TestFilterBackspaceRune(t *testing.T) {
+	m := newTestModel(t, Options{})
+	pressRune(m, '/')
+	pressRune(m, 'é')
+	if m.filter != "é" {
+		t.Fatalf("filter = %q, want é", m.filter)
+	}
+	pressType(m, tea.KeyBackspace)
+	if m.filter != "" {
+		t.Errorf("filter = %q, want empty after deleting é", m.filter)
+	}
+	if !utf8.ValidString(m.filter) {
+		t.Errorf("filter is not valid UTF-8: %q", m.filter)
+	}
+
+	typeText(m, "café")
+	pressType(m, tea.KeyBackspace)
+	if m.filter != "caf" {
+		t.Errorf("filter = %q, want caf after deleting the final rune", m.filter)
+	}
+	if !utf8.ValidString(m.filter) {
+		t.Errorf("filter is not valid UTF-8: %q", m.filter)
 	}
 }

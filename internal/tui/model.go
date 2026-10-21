@@ -6,6 +6,7 @@ package tui
 import (
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -166,14 +167,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // key handles one key press, dispatching on what the board is doing.
 func (m *Model) key(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	m.status = ""
+	if m.quits(msg) {
+		return m, tea.Quit
+	}
 	if m.showHelp {
 		switch msg.String() {
-		case "?", "esc", "q":
+		case "?", "esc":
 			m.showHelp = false
 		}
 		return m, nil
 	}
-	m.status = ""
 	if m.prompt != promptNone {
 		return m.promptKey(msg)
 	}
@@ -184,8 +188,6 @@ func (m *Model) key(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.filterKey(msg)
 	}
 	switch msg.String() {
-	case "q", "ctrl+c":
-		return m, tea.Quit
 	case "?":
 		m.showHelp = true
 	case "/":
@@ -241,6 +243,19 @@ func (m *Model) key(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// quits reports whether the key ends the board instead of reaching the active
+// mode. Ctrl+C always quits; q quits everywhere except the text modes, where it
+// is text.
+func (m *Model) quits(msg tea.KeyMsg) bool {
+	switch msg.String() {
+	case "ctrl+c":
+		return true
+	case "q":
+		return m.prompt == promptNone && !m.filtering
+	}
+	return false
+}
+
 // filterKey handles a key while the filter is being typed.
 func (m *Model) filterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
@@ -251,7 +266,8 @@ func (m *Model) filterKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.filtering = false
 	case "backspace":
 		if m.filter != "" {
-			m.filter = m.filter[:len(m.filter)-1]
+			_, size := utf8.DecodeLastRuneInString(m.filter)
+			m.filter = m.filter[:len(m.filter)-size]
 		}
 		m.rebuild()
 		m.afterMove()
