@@ -419,6 +419,29 @@
         "reasoning": 2262,
         "cache_read": 489088
       }
+    },
+    "3.9": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:02:52+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "c54140e4ff2b839bb4afdebb5cb0cf7687e50e34",
+      "commits": [
+        "4f15496ba5010097e738605d5e2bc08a99638fd9 board: exercise every listing filter through ls"
+      ],
+      "attempts": 1,
+      "handover": "# 3.9 Exercise every listing filter through the command\n\n## What landed\n\n- `board: exercise every listing filter through ls` (`4f15496`).\n- `TestListingFilter` now uses four topics whose state, kind and area sets\n  differ, including a `change` topic outside a `{bug, idea}` kind filter. It\n  checks both `nextSlugs` and `entries`, plus a two-filter intersection.\n- `TestLSFilters` runs state, kind and area flags (single, repeated and\n  intersected) in text and JSON. It extracts the Next section separately from\n  the grouped rows and asserts the JSON `next` and `topics` arrays.\n\n## Landmark drift\n\nNone. `TestListingFilter` was at `internal/board/board_test.go:205`;\n`TestLS` and its helpers at `cmd/benchpress/ls_test.go:61` onward.\n\n## Deviations from the work order\n\nNone. Coverage-only: production code is unchanged. I temporarily removed the\nKinds check from `Filter.match` and swapped `Kinds`/`Areas` in `ls.go`, saw the\nfocused tests fail, then restored both files with `git checkout`.\n\n## What the next session must know\n\n- `filterFixture` in `ls_test.go` is separate from the shared `fixture`, so\n  existing ls tests keep their current expectations.\n- `areas` in that fixture includes `army` so a repeated area filter selects a\n  subset rather than everything.\n- `textListing` assumes every indented line after `Next` (until a blank line)\n  is a Next row; area headings are unindented.\n- `scripts/verify` and `go test ./...` were green after the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9ff2235affe7yC0s1zAsih8FS",
+      "cost_usd": 0.020500890000000004,
+      "harness": "opencode",
+      "elapsed_s": 90,
+      "session_s": 89,
+      "tokens": {
+        "input": 76219,
+        "output": 4865,
+        "reasoning": 6162,
+        "cache_read": 817280
+      }
     }
   }
 }
