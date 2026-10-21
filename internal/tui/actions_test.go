@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -371,6 +372,24 @@ func TestReloadInvalidConfiguration(t *testing.T) {
 	})
 }
 
+// editorScript writes an executable that appends marker to the file it is given.
+func editorScript(t *testing.T, marker string) string {
+	t.Helper()
+	script := filepath.Join(t.TempDir(), "editor.sh")
+	body := "#!/bin/sh\nprintf '" + marker + "\\n' >> \"$1\"\n"
+	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
+		t.Fatalf("write editor script: %v", err)
+	}
+	return script
+}
+
+// synchronousEditor runs the editor command in the test process.
+func synchronousEditor(m *Model) {
+	m.execProcess = func(c *exec.Cmd, fn tea.ExecCallback) tea.Cmd {
+		return func() tea.Msg { return fn(c.Run()) }
+	}
+}
+
 // editorModel returns a wide board whose editor appends a line to the selected
 // topic, and the board it was loaded from.
 func editorModel(t *testing.T) (*Model, *board.Board) {
@@ -380,16 +399,46 @@ func editorModel(t *testing.T) (*Model, *board.Board) {
 	}, "")
 	m := newActionModel(t, b)
 
-	script := filepath.Join(t.TempDir(), "editor.sh")
-	if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf 'appended by editor\\n' >> \"$1\"\n"), 0o755); err != nil {
-		t.Fatalf("write editor script: %v", err)
-	}
 	t.Setenv("VISUAL", "")
-	t.Setenv("EDITOR", script)
-	m.execProcess = func(c *exec.Cmd, fn tea.ExecCallback) tea.Cmd {
-		return func() tea.Msg { return fn(c.Run()) }
-	}
+	t.Setenv("EDITOR", editorScript(t, "appended by editor"))
+	synchronousEditor(m)
 	return m, b
+}
+
+func TestEditorPrefersVisual(t *testing.T) {
+	b := loadActionBoard(t, map[string]string{
+		"alpha.md": topicText("bug", "economy", "open", "Alpha"),
+	}, "")
+	m := newActionModel(t, b)
+
+	t.Setenv("VISUAL", editorScript(t, "appended by visual"))
+	t.Setenv("EDITOR", editorScript(t, "appended by editor"))
+	synchronousEditor(m)
+
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	if cmd == nil {
+		t.Fatalf("e returned no command")
+	}
+	m.Update(cmd())
+
+	got := readAt(t, b.Root, "docs/workbench/alpha.md")
+	if !strings.Contains(got, "appended by visual") {
+		t.Errorf("VISUAL editor did not run:\n%s", got)
+	}
+	if strings.Contains(got, "appended by editor") {
+		t.Errorf("EDITOR ran although VISUAL was set:\n%s", got)
+	}
+}
+
+func TestEditorDefaultCommand(t *testing.T) {
+	t.Setenv("VISUAL", "")
+	t.Setenv("EDITOR", "")
+
+	got := editorCommand("docs/workbench/alpha.md")
+	want := []string{"vi", "docs/workbench/alpha.md"}
+	if !slices.Equal(got.Args, want) {
+		t.Errorf("editor command = %q, want %q", got.Args, want)
+	}
 }
 
 func TestEditorKeyReloads(t *testing.T) {
