@@ -131,6 +131,46 @@ func TestFindOutsideRepository(t *testing.T) {
 	}
 }
 
+func TestFindDirectoryIsNotPlan(t *testing.T) {
+	t.Run("inside a git repository", func(t *testing.T) {
+		dir := gitRepo(t)
+		writeFile(t, dir, "docs/plans/actual.md", "x")
+		commit(t, dir, "plan")
+
+		got := find(t, New(dir), "docs/plans", "docs/plans/", "docs/plans/actual.md")
+		for _, p := range []string{"docs/plans", "docs/plans/"} {
+			if locations := got[p]; len(locations) != 0 {
+				t.Errorf("locations for %q = %v, want none", p, locations)
+			}
+		}
+		if want := []string{Worktree, "main"}; !reflect.DeepEqual(got["docs/plans/actual.md"], want) {
+			t.Errorf("locations = %v, want %v", got["docs/plans/actual.md"], want)
+		}
+	})
+
+	t.Run("outside a git repository", func(t *testing.T) {
+		dir := t.TempDir()
+		t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(dir))
+		writeFile(t, dir, "docs/plans/actual.md", "x")
+		if err := os.Symlink("actual.md", filepath.Join(dir, "docs/plans/linked.md")); err != nil {
+			t.Fatalf("symlink: %v", err)
+		}
+
+		got := find(t, New(dir), "docs/plans", "docs/plans/", "docs/plans/actual.md", "docs/plans/linked.md")
+		for _, p := range []string{"docs/plans", "docs/plans/"} {
+			if locations := got[p]; len(locations) != 0 {
+				t.Errorf("locations for %q = %v, want none", p, locations)
+			}
+		}
+		if want := []string{Worktree}; !reflect.DeepEqual(got["docs/plans/actual.md"], want) {
+			t.Errorf("locations = %v, want %v", got["docs/plans/actual.md"], want)
+		}
+		if want := []string{Worktree}; !reflect.DeepEqual(got["docs/plans/linked.md"], want) {
+			t.Errorf("symlink locations = %v, want %v", got["docs/plans/linked.md"], want)
+		}
+	})
+}
+
 func TestFindCorruptRefsReturnsError(t *testing.T) {
 	dir := gitRepo(t)
 	writeFile(t, dir, "README.md", "seed")

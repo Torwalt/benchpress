@@ -89,6 +89,35 @@ func TestLintWarningExitsZero(t *testing.T) {
 	}
 }
 
+func TestLintDirectoryPlanGone(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(root))
+	writeFile(t, root, ".benchpress.toml", "dir = \"work\"\nareas = [\"maps\"]\n")
+	writeFile(t, root, "work/NEXT.md", "# Next\n\n1. [A](a.md)\n")
+	writeFile(t, root, "work/a.md", "---\nkind: bug\narea: maps\nstate: planned\nplan: docs/plans\n---\n\n# A\n")
+	if err := os.MkdirAll(filepath.Join(root, "docs", "plans"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	out, err := runRoot(t, root, "lint", "--json")
+	var code exitError
+	if !errors.As(err, &code) || int(code) != 1 {
+		t.Fatalf("err = %v, want exitError(1)\n%s", err, out)
+	}
+	var got struct {
+		Problems []struct {
+			Rule string `json:"rule"`
+		} `json:"problems"`
+	}
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("unmarshal: %v\n%s", err, out)
+	}
+	if len(got.Problems) != 1 || got.Problems[0].Rule != "plan-gone" {
+		t.Fatalf("problems = %+v, want exactly one plan-gone", got.Problems)
+	}
+}
+
 func TestLintJSON(t *testing.T) {
 	root := lintFixture(t)
 	out, err := runRoot(t, root, "lint", "--json")

@@ -143,10 +143,11 @@ func (r *Repo) Find(ctx context.Context, paths ...string) (map[string][]string, 
 	return found, nil
 }
 
-// inWorktree reports whether a repository-relative path exists on disk.
+// inWorktree reports whether a repository-relative path is a regular file on
+// disk. Stat follows a symlink, so a link to a regular file still counts.
 func (r *Repo) inWorktree(path string) bool {
-	_, err := os.Stat(filepath.Join(r.root, filepath.FromSlash(path)))
-	return err == nil
+	info, err := os.Stat(filepath.Join(r.root, filepath.FromSlash(path)))
+	return err == nil && info.Mode().IsRegular()
 }
 
 // branches lists the local branches as full refs, or an error outside a

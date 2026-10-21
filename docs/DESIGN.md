@@ -137,8 +137,9 @@ The only place order lives.
 
 ## 5. Where a plan is
 
-A `planned` topic's plan is **found** if the path exists in the working tree, or
-in the tree of any local branch (`refs/heads/*`). A plan run by ploopy often
+A `planned` topic's plan is **found** if the path names a regular file in the
+working tree — a symlink to one counts — or lies in the tree of any local branch
+(`refs/heads/*`). A plan run by ploopy often
 lives only on its branch, in a worktree, until the branch lands; that is not a
 problem, only a fact the board shows (`on raised-ground`).
 
