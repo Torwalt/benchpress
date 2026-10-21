@@ -529,3 +529,68 @@ func TestReloadFailureInvalidatesDerivedData(t *testing.T) {
 		t.Errorf("view still shows lint unavailable after recovery:\n%s", view)
 	}
 }
+
+// TestChangeRerunsLint is a change whose plan the locator cannot find: the
+// reload after the write must re-run lint, mark the topic and count the error,
+// and the next change must clear all three.
+func TestChangeRerunsLint(t *testing.T) {
+	b := loadActionBoard(t, map[string]string{
+		"alpha.md": topicText("bug", "economy", "settled", "Alpha"),
+	}, "# Next\n\n")
+	loc := locatorFunc(func(context.Context, ...string) (map[string][]string, error) {
+		return map[string][]string{}, nil
+	})
+	m := New(Options{Board: b, Locator: loc})
+	m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	wantSlug(t, m, "alpha")
+
+	hasRule := func(rule string) bool {
+		for _, p := range m.problems {
+			if p.Rule == rule {
+				return true
+			}
+		}
+		return false
+	}
+	entryText := func() string {
+		e, ok := m.selectedEntry()
+		if !ok {
+			t.Fatalf("no selected entry")
+		}
+		return m.topicText(e, "")
+	}
+
+	pressRune(m, 's')
+	if m.prompt != promptPlan {
+		t.Fatalf("prompt = %v, want plan", m.prompt)
+	}
+	typeText(m, "missing.md")
+	pressType(m, tea.KeyEnter)
+
+	if !hasRule("plan-gone") {
+		t.Errorf("problems after planning = %v, want plan-gone", m.problems)
+	}
+	if !m.errPaths["docs/workbench/alpha.md"] {
+		t.Errorf("error paths after planning = %v, want alpha marked", m.errPaths)
+	}
+	if got := entryText(); !strings.Contains(got, "!") {
+		t.Errorf("row after planning = %q, want an error mark", got)
+	}
+	if got := m.lintSummary(); got != "1 error" {
+		t.Errorf("lint summary after planning = %q, want 1 error", got)
+	}
+
+	pressRune(m, 's')
+	if hasRule("plan-gone") {
+		t.Errorf("problems after returning open = %v, want no plan-gone", m.problems)
+	}
+	if m.errPaths["docs/workbench/alpha.md"] {
+		t.Errorf("error paths after returning open = %v, want alpha unmarked", m.errPaths)
+	}
+	if got := entryText(); strings.Contains(got, "!") {
+		t.Errorf("row after returning open = %q, want no error mark", got)
+	}
+	if got := m.lintSummary(); got != "lint clean" {
+		t.Errorf("lint summary after returning open = %q, want lint clean", got)
+	}
+}
