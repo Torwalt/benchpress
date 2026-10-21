@@ -119,8 +119,11 @@ func (n *Next) Move(target string, at int) error {
 // Render writes the items as one contiguous numbered block where the first item
 // stood, every non-item line kept.
 func (n Next) Render() []byte {
-	out := make([][]byte, 0, len(n.head)+len(n.Items)+len(n.tail))
+	out := make([][]byte, 0, len(n.head)+len(n.Items)+len(n.tail)+1)
 	out = append(out, n.head...)
+	if len(n.Items) > 0 && len(n.head) > 0 && !bytes.HasSuffix(n.head[len(n.head)-1], []byte("\n")) {
+		out = append(out, n.nl)
+	}
 	for i, item := range n.Items {
 		line := []byte(strconv.Itoa(i+1) + ". " + item.Text)
 		if i < len(n.Items)-1 || len(n.tail) > 0 || n.trailing {

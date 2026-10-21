@@ -133,6 +133,41 @@ func TestAddAppendsAfterLastLine(t *testing.T) {
 	}
 }
 
+func TestAddAfterUnterminatedProse(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		nl   string
+	}{
+		{"LF", "# Next\n\nSome prose.", "\n"},
+		{"CRLF", "# Next\r\n\r\nSome prose.", "\r\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := string(Parse([]byte(tt.src)).Render()); got != tt.src {
+				t.Errorf("no-op Render = %q, want %q", got, tt.src)
+			}
+
+			item := Item{Target: "a.md", Text: "[a](a.md)"}
+			want := "# Next" + tt.nl + tt.nl + "Some prose." + tt.nl + "1. [a](a.md)"
+
+			n := Parse([]byte(tt.src))
+			n.Add(item)
+			if got := string(n.Render()); got != want {
+				t.Errorf("Add Render = %q, want %q", got, want)
+			}
+
+			n = Parse([]byte(tt.src))
+			if err := n.AddAt(item, 1); err != nil {
+				t.Fatalf("AddAt: %v", err)
+			}
+			if got := string(n.Render()); got != want {
+				t.Errorf("AddAt Render = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
 func TestAddAt(t *testing.T) {
 	n := Parse([]byte("1. [a](a.md)\n2. [b](b.md)\n"))
 	if err := n.AddAt(Item{Target: "x.md", Text: "[x](x.md)"}, 1); err != nil {
