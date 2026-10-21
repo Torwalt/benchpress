@@ -139,6 +139,29 @@
         "reasoning": 7983,
         "cache_read": 701696
       }
+    },
+    "2.1": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T21:48:57+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "417739d755e84e15e089313f4861f3fbe3b91919",
+      "commits": [
+        "b5414a22ee607e9a54365460972031526e61983d repo: read literal paths and full branch refs"
+      ],
+      "attempts": 1,
+      "handover": "# 2.1 Read literal paths and full branch refs from git\n\n## What landed\n\n- `repo: read literal paths and full branch refs` — `branches` asks\n  `for-each-ref` for `%(refname)`, so it returns full `refs/heads/...` refs.\n  `branchHolds` passes the full ref to `ls-tree`; `Find` strips `refs/heads/`\n  only when appending the branch name to its result.\n- `branchHolds` now runs `ls-tree -r -z --name-only` and splits on NUL, so\n  non-ASCII and otherwise unusual paths are matched literally instead of\n  C-quoted.\n- DESIGN §5 records `%(refname)`, `-z`, and the internal-full/display-short\n  split.\n- New tests `TestFindNonASCIIPlanOnBranch` and\n  `TestFindBranchNameWithTagCollision` reproduce both defects before the fix.\n\n## Landmark drift\n\nNone. `branches` is at `internal/repo/repo.go:101`, `branchHolds` at 112,\n`Find` at 54; the evidence line numbers in the work order had already moved\nwith earlier edits.\n\n## Deviations from the work order\n\n- The collision test creates branch `heads/foo` from `main` at the seed commit,\n  so it does not hold the plan. The expected result is only `foo`; had\n  `heads/foo` held the plan, `heads/foo` would be a legitimate displayed name.\n- Unit 2.2's D2 error classification was left untouched, as this unit did not\n  cite it. `Find` still swallows any `for-each-ref` error as \"outside a repo\".\n\n## What the next session must know\n\n- `branches` returns full refs. Any future caller adding a third git command\n  should keep the same internal/display split.\n- `nonEmptyLines` is still used only for `for-each-ref` output; branch names\n  cannot contain newlines, so newline splitting remains safe there.\n- `strings.TrimPrefix(ref, \"refs/heads/\")` is deliberately unconditional: every\n  ref comes from the `refs/heads` pattern.\n- The command-count test still passes: one `for-each-ref`, one `ls-tree` per\n  branch, no other subcommands.\n- `scripts/verify` and `go test ./...` were green before the commit.\n\n## Open problems\n\nNone for this unit. Unit 2.2 still needs to surface non-repository git failures\nand update DESIGN §5's error distinction.",
+      "session_id": "ses_e9ffe3d23ffeuDEbO7CHGdVyOZ",
+      "cost_usd": 0.009831132,
+      "harness": "opencode",
+      "elapsed_s": 49,
+      "session_s": 48,
+      "tokens": {
+        "input": 31986,
+        "output": 3424,
+        "reasoning": 2390,
+        "cache_read": 514944
+      }
     }
   }
 }
