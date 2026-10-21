@@ -954,6 +954,30 @@
         "reasoning": 2595,
         "cache_read": 712704
       }
+    },
+    "5.12": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:30:33+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "221e0408ed5eb57bf8dba8c0c7fe7a10b4a4581e",
+      "commits": [
+        "a10d0277e3093ddf7adafa623b2a0238f88c748f tui: explain Enter's narrow preview toggle in help"
+      ],
+      "attempts": 1,
+      "handover": "# 5.12 handover\n\n## What landed\n\n- `a10d027` — `tui: explain Enter's narrow preview toggle in help`. Adds\n  `TestHelpExplainsNarrowEnter`, which sizes the model to 80 columns, opens\n  help with `?`, and requires the editor binding plus\n  `enter toggles the preview below 100 columns`. Adds that wrapped line under\n  the `e enter` row in `helpView`.\n\n## Landmark drift\n\n- `helpView` still starts at `internal/tui/view.go:170`; the editor row is now\n  at `internal/tui/view.go:182` with the exception on the following line.\n- The narrow behaviour is unchanged at `internal/tui/model.go:239-244`.\n\n## Deviations from the work order\n\n- None. Text says \"below 100 columns\" literally, matching DESIGN §9 and\n  `narrowWidth`.\n\n## What the next session must know\n\n- `scripts/verify` and `go test ./...` are green at `a10d027`.\n- No dependency, DESIGN or Nix change; the help line restates DESIGN §9's\n  existing narrow-layout rule, so no document correction was needed.\n\n## Open problems\n\n- None.",
+      "session_id": "ses_e9fd80a8fffem2ARjdzXrW0sD6",
+      "cost_usd": 0.007663403999999999,
+      "harness": "opencode",
+      "elapsed_s": 41,
+      "session_s": 38,
+      "test_s": 3,
+      "tokens": {
+        "input": 31742,
+        "output": 1855,
+        "reasoning": 834,
+        "cache_read": 429568
+      }
     }
   }
 }
