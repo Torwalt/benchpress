@@ -327,6 +327,29 @@
         "reasoning": 2805,
         "cache_read": 545920
       }
+    },
+    "3.5": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T21:59:06+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "fc01d1b4ff0dd97da8b6e1f2a9b871e89c1d8935",
+      "commits": [
+        "78cf50c8486cad14c1945f90e62075eb632e68dc lint: pin command output ordering within one path"
+      ],
+      "attempts": 1,
+      "handover": "# 3.5 Exercise lint command ordering within one path\n\n## What landed\n\n- `lint: pin command output ordering within one path` (`78cf50c`).\n- `lintFixture`'s `good.md` now holds an earlier value error (`kind`, line 2)\n  and a later structural error (`unknown-key`, line 5), so collection order is\n  not line order.\n- `TestLintTextOrdersAndExitsOne` asserts the full five-line output exactly;\n  `TestLintJSON` asserts each problem's path, line, rule and severity in order.\n\n## Landmark drift\n\nNone. Fixture and both command tests were at the cited lines.\n\n## Deviations from the work order\n\nAdded one extra error to the fixture rather than a new file, keeping the\nexisting NEXT-before-topic path order and exit-code coverage. The missing-link\nline moved from 9 to 10 because the structural line was inserted.\n\n## What the next session must know\n\n- Verified by hand: `return false` for the line comparator fails both tests\n  (line 5 before line 2); reversing the comparator also fails both. Production\n  code was restored before committing.\n- `topic.Parse` already sorts structural issues by line, so the fixture relies\n  on lint's value checks running after structural checks to break collection\n  order.\n- `scripts/verify` and `go test ./...` were green after the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9ff536d2ffeq0r3dCbDItnP2x",
+      "cost_usd": 0.015564269999999998,
+      "harness": "opencode",
+      "elapsed_s": 65,
+      "session_s": 65,
+      "tokens": {
+        "input": 64065,
+        "output": 3749,
+        "reasoning": 2732,
+        "cache_read": 688640
+      }
     }
   }
 }
