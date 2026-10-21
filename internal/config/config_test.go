@@ -72,6 +72,53 @@ foo = "bar"
 	}
 }
 
+func TestLoadRejectsCaseVariantKeys(t *testing.T) {
+	for _, tc := range []struct {
+		key  string
+		body string
+	}{
+		{"Kinds", "Kinds = [\"bug\"]\n"},
+		{"Dir", "Dir = \"work\"\n"},
+		{"AREAS", "AREAS = [\"maps\"]\n"},
+		{"foo", "foo = \"bar\"\n"},
+	} {
+		t.Run(tc.key, func(t *testing.T) {
+			dir := t.TempDir()
+			writeConfig(t, dir, tc.body)
+
+			_, err := Load(dir)
+			if err == nil {
+				t.Fatalf("Load: want error for key %q", tc.key)
+			}
+			if !strings.Contains(err.Error(), `"`+tc.key+`"`) {
+				t.Errorf("error = %q, want it to name %q", err, tc.key)
+			}
+		})
+	}
+
+	t.Run("lowercase", func(t *testing.T) {
+		dir := t.TempDir()
+		writeConfig(t, dir, `dir = "work"
+kinds = ["bug"]
+areas = ["maps"]
+`)
+
+		cfg, err := Load(dir)
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if cfg.Dir != "work" {
+			t.Errorf("Dir = %q, want %q", cfg.Dir, "work")
+		}
+		if want := []string{"bug"}; !slices.Equal(cfg.Kinds, want) {
+			t.Errorf("Kinds = %v, want %v", cfg.Kinds, want)
+		}
+		if want := []string{"maps"}; !slices.Equal(cfg.Areas, want) {
+			t.Errorf("Areas = %v, want %v", cfg.Areas, want)
+		}
+	})
+}
+
 func TestFindRootNested(t *testing.T) {
 	root := t.TempDir()
 	writeConfig(t, root, "")

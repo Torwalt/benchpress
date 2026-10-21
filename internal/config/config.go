@@ -30,6 +30,9 @@ type Config struct {
 	Areas []string `toml:"areas"`
 }
 
+// knownKeys are the only top-level keys .benchpress.toml accepts.
+var knownKeys = map[string]bool{"dir": true, "kinds": true, "areas": true}
+
 // Load reads .benchpress.toml from root, applying defaults for absent keys.
 func Load(root string) (*Config, error) {
 	var cfg Config
@@ -37,12 +40,15 @@ func Load(root string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	if unknown := meta.Undecoded(); len(unknown) > 0 {
-		keys := make([]string, len(unknown))
-		for i, key := range unknown {
-			keys[i] = `"` + key.String() + `"`
+	// Decoding matches fields case-insensitively, so check the key spellings too.
+	var unknown []string
+	for _, key := range meta.Keys() {
+		if len(key) != 1 || !knownKeys[key[0]] {
+			unknown = append(unknown, `"`+key.String()+`"`)
 		}
-		return nil, fmt.Errorf("unknown key %s in %s", strings.Join(keys, ", "), FileName)
+	}
+	if len(unknown) > 0 {
+		return nil, fmt.Errorf("unknown key %s in %s", strings.Join(unknown, ", "), FileName)
 	}
 	if cfg.Dir == "" {
 		cfg.Dir = DefaultDir
