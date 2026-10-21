@@ -697,6 +697,29 @@
         "reasoning": 2277,
         "cache_read": 1141248
       }
+    },
+    "5.1": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:16:34+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "fdf6832ad7ceeb6f6eba915862952922b5708a89",
+      "commits": [
+        "582c6dc8390cd54bea9181f2054c4d7b7f7ba8cb board: open only on an actual stdout terminal"
+      ],
+      "attempts": 1,
+      "handover": "# 5.1 handover\n\n## What landed\n\n- `582c6dc` — `board: open only on an actual stdout terminal`.\n  `stdoutIsTerminal` now calls `term.IsTerminal(os.Stdout.Fd())` from\n  `github.com/charmbracelet/x/term` instead of accepting any character device.\n  Added `TestStdoutDevNullIsNotTerminal`, which swaps `os.Stdout` for an open\n  `/dev/null` and restores the saved `*os.File` in cleanup; it failed against\n  the old mode check. The existing redirected no-argument listing test still\n  passes.\n\n## Landmark drift\n\nNone. `stdoutIsTerminal` is still in `cmd/benchpress/board.go` and its only\ncaller is `newRootCmd` in `cmd/benchpress/main.go`. `x/term v0.2.2` was already\nin `go.sum` as an indirect dependency and is now direct in `go.mod`.\n\n## Deviations from the work order\n\nNone. `go mod tidy` only moved `charmbracelet/x/term` from the indirect block to\nthe direct require block; `go.sum` did not change.\n\n## What the next session must know\n\n- `vendorHash` is unchanged: the fake-hash build reported the existing\n  `sha256-qWghvwsSYGR5UKAfIS9T7mkL1YJZQFrapSLiS4AJjaA=`, so `flake.nix` has no\n  diff. `nix build .#benchpress` passes.\n- No DESIGN change: §7 already promises the board only when stdout is a\n  terminal.\n- The regression the old code had is specifically `/dev/null` being a character\n  device; pipes and regular files already failed the old predicate, and the\n  existing no-argument listing test exercises a redirected stdout.\n- `scripts/verify` and `go test ./...` are green at `582c6dc`.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9fe568d4ffeJPMuZLQdGSHWM3",
+      "cost_usd": 0.011655773999999999,
+      "harness": "opencode",
+      "elapsed_s": 78,
+      "session_s": 77,
+      "tokens": {
+        "input": 45561,
+        "output": 2993,
+        "reasoning": 1932,
+        "cache_read": 622208
+      }
     }
   }
 }
