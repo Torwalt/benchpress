@@ -21,7 +21,7 @@ func newLintCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			problems, err := lint.Check(cmd.Context(), b, repo.New(b.Root))
+			problems, err := lint.Check(cmd.Context(), b, b.Exists, repo.New(b.Root))
 			if err != nil {
 				return err
 			}

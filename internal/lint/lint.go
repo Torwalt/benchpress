@@ -6,9 +6,7 @@ package lint
 import (
 	"context"
 	"fmt"
-	"os"
 	"path"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -36,15 +34,17 @@ type Problem struct {
 	Message  string   `json:"message"`
 }
 
-// Check runs every rule of §6 over a loaded board and loc, returning the
-// problems sorted by path, then line. loc is asked once for every plan.
-func Check(ctx context.Context, b *board.Board, loc repo.Locator) ([]Problem, error) {
-	c := &checker{board: b, loc: loc}
+// Check runs every rule of §6 over a loaded board, returning the problems
+// sorted by path, then line. exists answers for repository-relative paths and
+// loc is asked once for every plan.
+func Check(ctx context.Context, b *board.Board, exists func(string) bool, loc repo.Locator) ([]Problem, error) {
+	c := &checker{board: b, exists: exists, loc: loc}
 	return c.run(ctx)
 }
 
 type checker struct {
 	board    *board.Board
+	exists   func(string) bool
 	loc      repo.Locator
 	dir      string
 	plans    map[string][]string // plan path -> where found
@@ -182,20 +182,13 @@ func (c *checker) add(severity Severity, p string, line int, rule, message strin
 	c.problems = append(c.problems, Problem{Path: p, Line: line, Severity: severity, Rule: rule, Message: message})
 }
 
-// exists reports whether a repository-relative path is in the working tree.
-func (c *checker) exists(rel string) bool {
-	_, err := os.Stat(filepath.Join(c.board.Root, filepath.FromSlash(rel)))
-	return err == nil
-}
-
 // inside reports whether resolved is dir itself or lexically below it, after
 // path normalization, including when dir is ".".
 func inside(dir, resolved string) bool {
-	rel, err := filepath.Rel(filepath.FromSlash(dir), filepath.FromSlash(resolved))
-	if err != nil {
-		return false
+	if dir == "." {
+		return resolved != ".." && !strings.HasPrefix(resolved, "../")
 	}
-	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+	return resolved == dir || strings.HasPrefix(resolved, dir+"/")
 }
 
 func nextItemMessage(slug, target string) string {

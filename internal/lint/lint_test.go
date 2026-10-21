@@ -2,13 +2,16 @@ package lint
 
 import (
 	"context"
-	"os"
-	"path/filepath"
+	"path"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/Torwalt/benchpress/internal/board"
 	"github.com/Torwalt/benchpress/internal/config"
+	"github.com/Torwalt/benchpress/internal/next"
 	"github.com/Torwalt/benchpress/internal/repo"
+	"github.com/Torwalt/benchpress/internal/topic"
 )
 
 // fakeLocator answers Find from a map, so lint's tests need no git.
@@ -32,33 +35,46 @@ func defaultConfig() *config.Config {
 	}
 }
 
-// run loads a board from a fixture and checks it.
-func run(t *testing.T, cfg *config.Config, topics map[string]string, next string, found map[string][]string) []Problem {
+// boardFrom builds a board in memory and the repository-relative paths that
+// exist for it.
+func boardFrom(t *testing.T, cfg *config.Config, topics map[string]string, nextSrc string) (*board.Board, map[string]bool) {
 	t.Helper()
-	root := t.TempDir()
-	dir := filepath.Join(root, filepath.FromSlash(cfg.Dir))
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
+	dir := path.Clean(cfg.Dir)
+	b := &board.Board{Root: ".", Config: cfg, Next: next.New()}
+	exists := make(map[string]bool)
 	for name, body := range topics {
-		if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
-			t.Fatalf("write %s: %v", name, err)
-		}
+		parsed, issues := topic.Parse([]byte(body))
+		b.Topics = append(b.Topics, &board.Topic{
+			Slug:   strings.TrimSuffix(name, ".md"),
+			Path:   path.Join(dir, name),
+			Parsed: parsed,
+			Issues: issues,
+		})
+		exists[path.Join(dir, name)] = true
 	}
-	if next != "" {
-		if err := os.WriteFile(filepath.Join(dir, "NEXT.md"), []byte(next), 0o644); err != nil {
-			t.Fatalf("write NEXT: %v", err)
-		}
+	sort.Slice(b.Topics, func(i, j int) bool { return b.Topics[i].Slug < b.Topics[j].Slug })
+	if nextSrc != "" {
+		b.Next = next.Parse([]byte(nextSrc))
+		exists[path.Join(dir, "NEXT.md")] = true
 	}
-	b, err := board.Load(root, cfg)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	problems, err := Check(context.Background(), b, fakeLocator(found))
+	return b, exists
+}
+
+// checkBoard checks a board against an in-memory existence set.
+func checkBoard(t *testing.T, b *board.Board, exists map[string]bool, found map[string][]string) []Problem {
+	t.Helper()
+	problems, err := Check(context.Background(), b, func(rel string) bool { return exists[rel] }, fakeLocator(found))
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}
 	return problems
+}
+
+// run builds a board from topic bytes and checks it.
+func run(t *testing.T, cfg *config.Config, topics map[string]string, next string, found map[string][]string) []Problem {
+	t.Helper()
+	b, exists := boardFrom(t, cfg, topics, next)
+	return checkBoard(t, b, exists, found)
 }
 
 // check runs a board with the default configuration and no found plans.
@@ -242,34 +258,14 @@ func TestNextTargetsMustNameTopicFiles(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			root := t.TempDir()
-			dir := filepath.Join(root, filepath.FromSlash(defaultConfig().Dir))
-			if err := os.MkdirAll(dir, 0o755); err != nil {
-				t.Fatalf("mkdir: %v", err)
-			}
-			if err := os.WriteFile(filepath.Join(dir, "a.md"), []byte(topicBody("bug", "maps", "open", "A")), 0o644); err != nil {
-				t.Fatalf("write a.md: %v", err)
-			}
-			if err := os.WriteFile(filepath.Join(dir, "NEXT.md"), []byte("# Next\n\n1. [A]("+c.target+")\n"), 0o644); err != nil {
-				t.Fatalf("write NEXT.md: %v", err)
-			}
+			cfg := defaultConfig()
+			b, exists := boardFrom(t, cfg, map[string]string{
+				"a.md": topicBody("bug", "maps", "open", "A"),
+			}, "# Next\n\n1. [A]("+c.target+")\n")
 			if c.present {
-				full := filepath.Join(dir, filepath.FromSlash(c.target))
-				if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
-					t.Fatalf("mkdir target: %v", err)
-				}
-				if err := os.WriteFile(full, []byte("outside\n"), 0o644); err != nil {
-					t.Fatalf("write target: %v", err)
-				}
+				exists[path.Clean(path.Join(cfg.Dir, c.target))] = true
 			}
-			b, err := board.Load(root, defaultConfig())
-			if err != nil {
-				t.Fatalf("Load: %v", err)
-			}
-			problems, err := Check(context.Background(), b, fakeLocator(nil))
-			if err != nil {
-				t.Fatalf("Check: %v", err)
-			}
+			problems := checkBoard(t, b, exists, nil)
 
 			var nextItems, duplicates int
 			for _, p := range problems {
@@ -314,6 +310,31 @@ func TestTopicLink(t *testing.T) {
 		}, "# Next\n\n1. [A](a.md) see [gone](gone.md)\n")
 		requireOnly(t, problems, "topic-link")
 	})
+}
+
+func TestCheckUsesSuppliedExistence(t *testing.T) {
+	cfg := defaultConfig()
+	b, exists := boardFrom(t, cfg, map[string]string{
+		"a.md": "---\nkind: bug\narea: maps\nstate: open\n---\n\n# A\n\n[there](there.md) and [gone](gone.md)\n",
+	}, "# Next\n")
+	exists[path.Join(cfg.Dir, "there.md")] = true
+
+	problems := checkBoard(t, b, exists, nil)
+	p := requireOnly(t, problems, "topic-link")
+	if !strings.Contains(p.Message, "gone.md") {
+		t.Fatalf("problem = %+v, want the missing link", p)
+	}
+
+	delete(exists, path.Join(cfg.Dir, "there.md"))
+	problems = checkBoard(t, b, exists, nil)
+	if len(problems) != 2 {
+		t.Fatalf("problems = %+v, want both links missing", problems)
+	}
+	for _, p := range problems {
+		if p.Rule != "topic-link" {
+			t.Errorf("rule = %q, want topic-link", p.Rule)
+		}
+	}
 }
 
 func TestTopicLinkWithRootDirectory(t *testing.T) {

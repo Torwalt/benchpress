@@ -81,7 +81,7 @@ func (m *Model) reload() error {
 	if err != nil {
 		return err
 	}
-	problems, err := lint.Check(context.Background(), b, planLocator(found))
+	problems, err := lint.Check(context.Background(), b, b.Exists, planLocator(found))
 	if err != nil {
 		return err
 	}

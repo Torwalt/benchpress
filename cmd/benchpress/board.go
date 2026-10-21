@@ -41,7 +41,7 @@ func runBoard(cmd *cobra.Command) error {
 	if err != nil {
 		return err
 	}
-	problems, err := lint.Check(cmd.Context(), b, locator(planFound))
+	problems, err := lint.Check(cmd.Context(), b, b.Exists, locator(planFound))
 	if err != nil {
 		return err
 	}

@@ -272,17 +272,22 @@ embed.go           package benchpress: the embedded skill
 internal/config    .benchpress.toml: defaults, unknown-key check, root discovery
 internal/topic     one topic file: parse, title, links, front-matter edits. Pure text.
 internal/next      NEXT.md: parse items, rewrite the block. Pure text.
-internal/board     the directory: load every topic and Next, the ls order, and
-                   the operations of §7 (new, state, next, rm) as file writes
+internal/board     the directory: load every topic and Next, the ls order, the
+                   operations of §7 (new, state, next, rm) as file writes, and
+                   whether a repository-relative path exists
 internal/repo      read-only git: the local branches and which plan paths each holds
-internal/lint      the rules of §6 over a loaded board and a plan locator
+internal/lint      the rules of §6 over a loaded board, a plan locator and an
+                   existence query
 internal/tui       the board of §9: bubbletea, bubbles, lipgloss, glamour
 ```
 
 - `topic` and `next` do no file I/O beyond what their callers hand them: they
   take and return bytes.
-- `lint` takes the plan locator as an interface, so its tests need no git.
+- `lint` takes the plan locator as an interface and an explicit
+  repository-relative existence query from its caller, so its tests need
+  neither git nor a filesystem. The board answers the existence query.
 - `repo` never runs a git command that writes.
-- `tui` calls `board` and `lint`; it never edits a file itself.
+- `tui` calls `board` and `lint`; it never edits a file itself. It takes a
+  `repo.Locator` to find plans on reload.
 - Dependencies stay few: cobra, BurntSushi/toml, and charmbracelet's bubbletea,
   bubbles, lipgloss and glamour. No YAML library, no file watcher.

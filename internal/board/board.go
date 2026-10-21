@@ -199,6 +199,13 @@ func (b *Board) Listing(f Filter, planFound map[string][]string) ([]string, []En
 	return nextSlugs, entries
 }
 
+// Exists reports whether a repository-relative path is in the working tree.
+// A stat error counts as absence.
+func (b *Board) Exists(rel string) bool {
+	_, err := os.Stat(filepath.Join(b.Root, filepath.FromSlash(rel)))
+	return err == nil
+}
+
 // Plans returns the distinct plan paths of the planned topics.
 func (b *Board) Plans() []string {
 	seen := make(map[string]bool)
