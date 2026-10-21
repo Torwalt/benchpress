@@ -61,11 +61,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792136898,
-        "narHash": "sha256-HFHsH56H9bISlU5whnoxVqXB+JkJgihYxNQZb9ztNPw=",
+        "lastModified": 1792599161,
+        "narHash": "sha256-ZI/FxNoBKr+MhaH6bGQBi78JIuNvZpV+FbC7dSCyGHw=",
         "owner": "Torwalt",
         "repo": "ploopy",
-        "rev": "6676ee0b2e984f86f1b90912181ab7b04daddc23",
+        "rev": "5c339cda34ffd98c20b4574ceec486ecc411e2f0",
         "type": "github"
       },
       "original": {
