@@ -649,6 +649,29 @@
         "reasoning": 943,
         "cache_read": 530048
       }
+    },
+    "4.8": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:13:44+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "e9dc100981a0b8c5dcfd9381a5d63b18251c09c5",
+      "commits": [
+        "de98367b83ae94619a5f4f3372dfcbe269ae675a init: assert a repeated init keeps the Claude symlink"
+      ],
+      "attempts": 1,
+      "handover": "# 4.8 handover\n\n## What landed\n\n- `init: assert a repeated init keeps the Claude symlink` — strengthens\n  `TestInitSecondRunChangesNothing`: it creates `.claude/skills` before the first\n  init, keeps the existing target-byte snapshot, and now also `Lstat`s the\n  installed link before and after the second run. It requires `os.SameFile` and\n  equal mode and modification time, so a remove-and-recreate with the same\n  target is caught.\n\n## Landmark drift\n\nNone. `TestInitSecondRunChangesNothing` was at `init_test.go:49` and is now\n`:49-84`; `initSnapshot` is unchanged at `:318-329` and still records the link\ntarget.\n\n## Deviations from the work order\n\nThe test compares identity plus mode and modification time rather than only\ninode identity. A temporary remove/recreate regression reuses the inode on this\nfilesystem, so `os.SameFile` alone did not fail; the metadata comparison did.\nNo production code changed.\n\n## What the next session must know\n\n- The focused test was made to fail by temporarily making `symlinkOnly` remove\n  and recreate an existing link (same target, no output), then restored. The\n  metadata assertion caught the recreation; `os.SameFile` did not, because the\n  filesystem reused the inode.\n- No DESIGN change: this unit only strengthens test coverage of the existing\n  \"never overwrites\" promise in §7.\n\n## Open problems\n\nNone. `scripts/verify` and `go test ./...` are green.",
+      "session_id": "ses_e9fe7803cffeuy0I4HhdoA4wT0",
+      "cost_usd": 0.012563154,
+      "harness": "opencode",
+      "elapsed_s": 45,
+      "session_s": 44,
+      "tokens": {
+        "input": 53067,
+        "output": 2418,
+        "reasoning": 2930,
+        "cache_read": 464768
+      }
     }
   }
 }
