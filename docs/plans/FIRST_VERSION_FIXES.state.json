@@ -209,6 +209,30 @@
         "reasoning": 1452,
         "cache_read": 516224
       }
+    },
+    "2.4": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T21:51:54+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "75bbf0ba6a19487f9567156d313e6e5201dec3b8",
+      "commits": [
+        "4f30a93912108a3033639513d2da1f735b4e7838 repo: refuse directories as found plan files"
+      ],
+      "attempts": 1,
+      "handover": "# 2.4 Refuse directories as found plan files\n\n## What landed\n\n- `repo: refuse directories as found plan files` — `inWorktree` now requires\n  `os.Stat` info with `Mode().IsRegular()`, so a directory (with or without a\n  trailing slash) is not a found plan while a symlink to a regular file still\n  is.\n- Added `TestFindDirectoryIsNotPlan` covering both path spellings inside a git\n  repository and outside one, plus a real plan file and a symlink to it.\n- Added `TestLintDirectoryPlanGone`, which runs `lint --json` on a fixture whose\n  only plan reference is an existing `docs/plans` directory and requires one\n  `plan-gone` error and exit 1.\n- DESIGN §5 now states that a plan is a regular file in the working tree, with a\n  symlink to one counting.\n\n## Landmark drift\n\nThe evidence cited `internal/repo/repo.go:92-94`; `inWorktree` is now at ~146.\n`internal/lint/lint.go:129-130` still trusts the locator's result, now through\n`c.plans[planPath]`; no lint change was needed because repo no longer reports\na directory.\n\n## Deviations from the work order\n\n- Added the symlink assertion to the outside-git subtest, as the goal requires\n  following a symlink to remain valid and no named test covered it.\n- Updated DESIGN §5 even though the done-when list did not require it, because\n  the document said any existing path counted.\n\n## What the next session must know\n\n- `git ls-tree -r --name-only \u003cref\u003e -- docs/plans` and `-- docs/plans/` both\n  return leaf paths (`docs/plans/a.md`), never the directory itself, so branch\n  lookup already refused directories; the trailing-slash assertions protect\n  that against a future switch away from `-r`.\n- Both new tests were confirmed to fail with the old `os.Stat`-only\n  implementation before the fix was restored.\n- `scripts/verify` and `go test ./...` were green before the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9ffbcf84ffenm7YBsBnsUsAbe",
+      "cost_usd": 0.018024918,
+      "harness": "opencode",
+      "elapsed_s": 66,
+      "session_s": 65,
+      "test_s": 1,
+      "tokens": {
+        "input": 74385,
+        "output": 3869,
+        "reasoning": 4135,
+        "cache_read": 688256
+      }
     }
   }
 }
