@@ -204,29 +204,53 @@ func TestListingBrokenTopic(t *testing.T) {
 
 func TestListingFilter(t *testing.T) {
 	b := loadFixture(t, map[string]string{
-		"open-bug.md":     topicBody("bug", "economy", "open", "Open bug"),
-		"settled-idea.md": topicBody("idea", "maps", "settled", "Settled idea"),
-	}, "# Next\n\n1. [Open bug](open-bug.md)\n")
+		"open-bug.md":       topicBody("bug", "economy", "open", "Open bug"),
+		"settled-idea.md":   topicBody("idea", "maps", "settled", "Settled idea"),
+		"open-change.md":    topicBody("change", "maps", "open", "Open change"),
+		"planned-design.md": topicBody("design", "economy", "planned", "Planned design"),
+	}, "# Next\n\n1. [Open bug](open-bug.md)\n2. [Settled idea](settled-idea.md)\n3. [Open change](open-change.md)\n")
 
-	nextSlugs, entries := b.Listing(Filter{States: []string{"settled"}}, nil)
-	if len(nextSlugs) != 0 {
-		t.Errorf("next = %v, want empty for a settled filter", nextSlugs)
+	cases := []struct {
+		name    string
+		filter  Filter
+		next    []string
+		entries []string
+	}{
+		{
+			name:    "state",
+			filter:  Filter{States: []string{"settled"}},
+			next:    []string{"settled-idea"},
+			entries: []string{"settled-idea"},
+		},
+		{
+			name:    "kinds",
+			filter:  Filter{Kinds: []string{"bug", "idea"}},
+			next:    []string{"open-bug", "settled-idea"},
+			entries: []string{"open-bug", "settled-idea"},
+		},
+		{
+			name:    "areas",
+			filter:  Filter{Areas: []string{"maps"}},
+			next:    []string{"settled-idea", "open-change"},
+			entries: []string{"settled-idea", "open-change"},
+		},
+		{
+			name:    "different filters intersect",
+			filter:  Filter{States: []string{"open"}, Kinds: []string{"bug"}},
+			next:    []string{"open-bug"},
+			entries: []string{"open-bug"},
+		},
 	}
-	if got := slugs(entries); !reflect.DeepEqual(got, []string{"settled-idea"}) {
-		t.Errorf("state filter entries = %v", got)
-	}
-
-	nextSlugs, entries = b.Listing(Filter{Kinds: []string{"bug", "idea"}}, nil)
-	if !reflect.DeepEqual(nextSlugs, []string{"open-bug"}) {
-		t.Errorf("next = %v, want open-bug", nextSlugs)
-	}
-	if got := slugs(entries); !reflect.DeepEqual(got, []string{"open-bug", "settled-idea"}) {
-		t.Errorf("kind filter entries = %v", got)
-	}
-
-	_, entries = b.Listing(Filter{Areas: []string{"maps"}}, nil)
-	if got := slugs(entries); !reflect.DeepEqual(got, []string{"settled-idea"}) {
-		t.Errorf("area filter entries = %v", got)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			nextSlugs, entries := b.Listing(c.filter, nil)
+			if !reflect.DeepEqual(nextSlugs, c.next) {
+				t.Errorf("next = %v, want %v", nextSlugs, c.next)
+			}
+			if got := slugs(entries); !reflect.DeepEqual(got, c.entries) {
+				t.Errorf("entries = %v, want %v", got, c.entries)
+			}
+		})
 	}
 }
 

@@ -58,6 +58,144 @@ func runLS(t *testing.T, root string, args ...string) (string, error) {
 	return out.String(), err
 }
 
+func filterFixture(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(root))
+	writeFile(t, root, ".benchpress.toml", "dir = \"work\"\nareas = [\"economy\", \"maps\", \"army\"]\n")
+	writeFile(t, root, "work/NEXT.md", "# Next\n\n1. [Open bug](open-bug.md)\n2. [Settled idea](settled-idea.md)\n3. [Open change](open-change.md)\n")
+	writeFile(t, root, "work/open-bug.md",
+		"---\nkind: bug\narea: economy\nstate: open\n---\n\n# Open bug\n")
+	writeFile(t, root, "work/settled-idea.md",
+		"---\nkind: idea\narea: maps\nstate: settled\n---\n\n# Settled idea\n")
+	writeFile(t, root, "work/open-change.md",
+		"---\nkind: change\narea: maps\nstate: open\n---\n\n# Open change\n")
+	writeFile(t, root, "work/planned-design.md",
+		"---\nkind: design\narea: economy\nstate: planned\nplan: docs/plans/P.md\n---\n\n# Planned design\n")
+	writeFile(t, root, "work/open-army.md",
+		"---\nkind: bug\narea: army\nstate: open\n---\n\n# Open army\n")
+	writeFile(t, root, "docs/plans/P.md", "plan\n")
+	return root
+}
+
+// textListing returns the slugs under Next and the slugs in the grouped rows.
+func textListing(out string) (next, topics []string) {
+	next, topics = []string{}, []string{}
+	inNext := false
+	for _, line := range strings.Split(out, "\n") {
+		switch {
+		case line == "Next":
+			inNext = true
+		case line == "":
+			inNext = false
+		case strings.HasPrefix(line, "  "):
+			fields := strings.Fields(line)
+			if len(fields) == 0 {
+				continue
+			}
+			if inNext {
+				next = append(next, fields[0])
+			} else {
+				topics = append(topics, fields[0])
+			}
+		}
+	}
+	return next, topics
+}
+
+func TestLSFilters(t *testing.T) {
+	root := filterFixture(t)
+	cases := []struct {
+		name    string
+		args    []string
+		next    []string
+		entries []string
+	}{
+		{
+			name:    "state",
+			args:    []string{"--state", "open"},
+			next:    []string{"open-bug", "open-change"},
+			entries: []string{"open-bug", "open-change", "open-army"},
+		},
+		{
+			name:    "repeated states",
+			args:    []string{"--state", "settled", "--state", "planned"},
+			next:    []string{"settled-idea"},
+			entries: []string{"settled-idea", "planned-design"},
+		},
+		{
+			name:    "kind",
+			args:    []string{"--kind", "bug"},
+			next:    []string{"open-bug"},
+			entries: []string{"open-bug", "open-army"},
+		},
+		{
+			name:    "repeated kinds",
+			args:    []string{"--kind", "bug", "--kind", "idea"},
+			next:    []string{"open-bug", "settled-idea"},
+			entries: []string{"open-bug", "settled-idea", "open-army"},
+		},
+		{
+			name:    "area",
+			args:    []string{"--area", "maps"},
+			next:    []string{"settled-idea", "open-change"},
+			entries: []string{"settled-idea", "open-change"},
+		},
+		{
+			name:    "repeated areas",
+			args:    []string{"--area", "economy", "--area", "army"},
+			next:    []string{"open-bug"},
+			entries: []string{"open-bug", "planned-design", "open-army"},
+		},
+		{
+			name:    "different flags intersect",
+			args:    []string{"--state", "open", "--area", "maps"},
+			next:    []string{"open-change"},
+			entries: []string{"open-change"},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			out, err := runLS(t, root, c.args...)
+			if err != nil {
+				t.Fatalf("ls: %v\n%s", err, out)
+			}
+			next, topics := textListing(out)
+			if !reflect.DeepEqual(next, c.next) {
+				t.Errorf("text next = %v, want %v:\n%s", next, c.next, out)
+			}
+			if want := c.entries[len(c.next):]; !reflect.DeepEqual(topics, want) {
+				t.Errorf("text topics = %v, want %v:\n%s", topics, want, out)
+			}
+
+			jsonOut, err := runLS(t, root, append(c.args, "--json")...)
+			if err != nil {
+				t.Fatalf("ls --json: %v\n%s", err, jsonOut)
+			}
+			var got struct {
+				Next   []string `json:"next"`
+				Topics []struct {
+					Slug string `json:"slug"`
+				} `json:"topics"`
+			}
+			if err := json.Unmarshal([]byte(jsonOut), &got); err != nil {
+				t.Fatalf("unmarshal: %v\n%s", err, jsonOut)
+			}
+			if !reflect.DeepEqual(got.Next, c.next) {
+				t.Errorf("json next = %v, want %v", got.Next, c.next)
+			}
+			slugs := make([]string, len(got.Topics))
+			for i, topic := range got.Topics {
+				slugs[i] = topic.Slug
+			}
+			if !reflect.DeepEqual(slugs, c.entries) {
+				t.Errorf("json topics = %v, want %v", slugs, c.entries)
+			}
+		})
+	}
+}
+
 func TestLS(t *testing.T) {
 	root := fixture(t)
 	out, err := runLS(t, root)
