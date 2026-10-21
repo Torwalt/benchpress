@@ -256,6 +256,31 @@
         "reasoning": 15539,
         "cache_read": 1033600
       }
+    },
+    "3.2": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T21:55:36+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "ff91c97e063a318e1db4febd6fc2e3ad8e9e2474",
+      "commits": [
+        "db6ea501c26d473ce861f6423108f3234a38d1db lint: contain root-directory links correctly"
+      ],
+      "attempts": 1,
+      "handover": "# 3.2 Classify missing Markdown links correctly with dir set to dot\n\n## What landed\n\n- `lint: contain root-directory links correctly` (`db6ea50`) replaces the\n  prefix comparison in `checkLink` with an `inside` helper based on\n  `filepath.Rel`, so a normalized path below `dir = \".\"` is recognized as a\n  topic link rather than an outside link.\n- `TestTopicLinkWithRootDirectory` checks `missing.md` is `topic-link` at error\n  severity with its source line, and that a paired `../outside.md` remains the\n  `link` warning.\n- `TestLintRootDirectoryLinkExitsOne` runs `benchpress lint` against a `dir =\n  \".\"` fixture and requires the topic-link error and exit 1.\n\n## Landmark drift\n\nThe evidence cited `internal/lint/lint.go:166-167` for the `./` prefix; by now\nthe prefix had already changed to `dir+\"/\"` but still failed for `dir = \".\"`.\nThe defect was in `checkLink`, and the new helper is immediately below `exists`.\n\n## Deviations from the work order\n\nNone. The containment check is generalized to any normalized relative path,\nincluding nested paths under `dir`, without changing the rule boundaries in\nDESIGN §6.\n\n## What the next session must know\n\n- `inside` uses OS path semantics via `filepath.FromSlash` and `filepath.Rel`;\n  both inputs are already slash-normalized repository-relative paths.\n- `scripts/verify` and `go test ./...` were green before the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9ff86398ffeupeuOo66L5OxjU",
+      "cost_usd": 0.017447292000000003,
+      "harness": "opencode",
+      "elapsed_s": 64,
+      "session_s": 62,
+      "verify_s": 1,
+      "test_s": 1,
+      "tokens": {
+        "input": 71854,
+        "output": 2955,
+        "reasoning": 4648,
+        "cache_read": 702464
+      }
     }
   }
 }
