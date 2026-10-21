@@ -2,10 +2,12 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -112,6 +114,47 @@ func TestFindOutsideRepository(t *testing.T) {
 	if want := []string{Worktree}; !reflect.DeepEqual(got["docs/plans/here.md"], want) {
 		t.Errorf("locations = %v, want %v", got["docs/plans/here.md"], want)
 	}
+}
+
+func TestFindCorruptRefsReturnsError(t *testing.T) {
+	dir := gitRepo(t)
+	writeFile(t, dir, "README.md", "seed")
+	commit(t, dir, "seed")
+	writeFile(t, dir, ".git/packed-refs", "garbage line here\n")
+
+	_, err := New(dir).Find(context.Background(), "docs/plans/missing.md")
+	if err == nil {
+		t.Fatal("Find: got nil error, want the packed-refs diagnostic")
+	}
+	if !strings.Contains(err.Error(), "packed-refs") {
+		t.Errorf("Find: error = %q, want the packed-refs diagnostic", err)
+	}
+}
+
+func TestFindDoesNotSuppressOtherFailures(t *testing.T) {
+	t.Run("cancelled", func(t *testing.T) {
+		dir := gitRepo(t)
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		_, err := New(dir).Find(ctx, "docs/plans/missing.md")
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("Find: error = %v, want context.Canceled", err)
+		}
+	})
+
+	t.Run("git unavailable", func(t *testing.T) {
+		dir := t.TempDir()
+		t.Setenv("PATH", t.TempDir())
+
+		_, err := New(dir).Find(context.Background(), "docs/plans/missing.md")
+		if err == nil {
+			t.Fatal("Find: got nil error, want a missing git executable error")
+		}
+		if !strings.Contains(err.Error(), "git") {
+			t.Errorf("Find: error = %q, want it to name git", err)
+		}
+	})
 }
 
 func TestFindNonASCIIPlanOnBranch(t *testing.T) {

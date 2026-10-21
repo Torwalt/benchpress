@@ -3,13 +3,53 @@
 package repo
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 )
+
+// errNotRepository marks git's own diagnostic for a directory outside a
+// repository. Only that diagnostic permits the worktree-only fallback.
+var errNotRepository = errors.New("not a git repository")
+
+// gitError keeps the command, git's stderr and the process error together.
+type gitError struct {
+	args    []string
+	stderr  string
+	err     error
+	outside bool
+}
+
+func (e *gitError) Error() string {
+	msg := fmt.Sprintf("git %s: %v", strings.Join(e.args, " "), e.err)
+	if stderr := strings.TrimSpace(e.stderr); stderr != "" {
+		msg += ": " + stderr
+	}
+	return msg
+}
+
+func (e *gitError) Unwrap() error { return e.err }
+
+func (e *gitError) Is(target error) bool {
+	return target == errNotRepository && e.outside
+}
+
+// withoutLocale drops an inherited LC_ALL so the C locale command's
+// diagnostic is the one git prints.
+func withoutLocale(env []string) []string {
+	out := env[:0]
+	for _, kv := range env {
+		if !strings.HasPrefix(kv, "LC_ALL=") {
+			out = append(out, kv)
+		}
+	}
+	return out
+}
 
 // Worktree names the working tree in Find's results.
 const Worktree = "worktree"
@@ -36,11 +76,22 @@ func New(root string) *Repo {
 	return &Repo{
 		root: root,
 		run: func(ctx context.Context, args ...string) ([]byte, error) {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
 			cmd := exec.CommandContext(ctx, "git", args...)
 			cmd.Dir = root
+			cmd.Env = append(withoutLocale(os.Environ()), "LC_ALL=C")
+			var stderr bytes.Buffer
+			cmd.Stderr = &stderr
 			out, err := cmd.Output()
 			if err != nil {
-				return nil, fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
+				return nil, &gitError{
+					args:    args,
+					stderr:  stderr.String(),
+					err:     err,
+					outside: strings.HasPrefix(stderr.String(), "fatal: not a git repository"),
+				}
 			}
 			return out, nil
 		},
@@ -72,7 +123,10 @@ func (r *Repo) Find(ctx context.Context, paths ...string) (map[string][]string, 
 
 	branches, err := r.branches(ctx)
 	if err != nil {
-		return found, nil
+		if errors.Is(err, errNotRepository) {
+			return found, nil
+		}
+		return found, err
 	}
 	for _, ref := range branches {
 		held, err := r.branchHolds(ctx, ref, unique)

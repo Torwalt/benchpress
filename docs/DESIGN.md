@@ -146,8 +146,13 @@ benchpress asks git once per local branch, never once per topic and branch:
 one `git for-each-ref --format=%(refname) refs/heads` and then, per branch, one
 `git ls-tree -r -z --name-only <ref> -- <path>…` over every plan path in
 question. It keeps full `refs/heads/…` refs internally and strips that prefix
-only to report a branch's name; `-z` keeps unusual path bytes literal. Outside
-a git repository only the working tree is consulted, without an error.
+only to report a branch's name; `-z` keeps unusual path bytes literal.
+
+benchpress runs git with `LC_ALL=C` and keeps its stderr. Only git's
+`fatal: not a git repository` diagnostic means the repository is absent; then
+only the working tree is consulted, without an error. Every other git failure
+is reported with its diagnostic instead of passing an absent-plan map off as
+success.
 
 ## 6. Lint
 
