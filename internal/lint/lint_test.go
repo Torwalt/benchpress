@@ -83,13 +83,16 @@ func check(t *testing.T, topics map[string]string, next string) []Problem {
 	return run(t, defaultConfig(), topics, next, nil)
 }
 
-func requireOnly(t *testing.T, problems []Problem, rule string) Problem {
+func requireOnly(t *testing.T, problems []Problem, rule string, severity Severity) Problem {
 	t.Helper()
 	if len(problems) != 1 {
 		t.Fatalf("problems = %+v, want exactly one %q", problems, rule)
 	}
 	if problems[0].Rule != rule {
 		t.Fatalf("rule = %q, want %q (%+v)", problems[0].Rule, rule, problems[0])
+	}
+	if problems[0].Severity != severity {
+		t.Fatalf("severity = %q, want %q (%+v)", problems[0].Severity, severity, problems[0])
 	}
 	return problems[0]
 }
@@ -102,7 +105,7 @@ func TestSlug(t *testing.T) {
 	problems := check(t, map[string]string{
 		"Bad_Name.md": topicBody("bug", "maps", "open", "Bad Name"),
 	}, "# Next\n")
-	p := requireOnly(t, problems, "slug")
+	p := requireOnly(t, problems, "slug", Error)
 	if p.Path != "docs/workbench/Bad_Name.md" || p.Line != 1 || p.Severity != Error {
 		t.Errorf("problem = %+v", p)
 	}
@@ -112,7 +115,7 @@ func TestFrontMatter(t *testing.T) {
 	problems := check(t, map[string]string{
 		"bad.md": "# No front matter\n",
 	}, "# Next\n")
-	p := requireOnly(t, problems, "front-matter")
+	p := requireOnly(t, problems, "front-matter", Error)
 	if p.Path != "docs/workbench/bad.md" || p.Line != 1 {
 		t.Errorf("problem = %+v", p)
 	}
@@ -122,28 +125,28 @@ func TestUnknownKey(t *testing.T) {
 	problems := check(t, map[string]string{
 		"a.md": "---\nkind: bug\narea: maps\nstate: open\ncolour: red\n---\n\n# A\n",
 	}, "# Next\n")
-	requireOnly(t, problems, "unknown-key")
+	requireOnly(t, problems, "unknown-key", Error)
 }
 
 func TestDuplicateKey(t *testing.T) {
 	problems := check(t, map[string]string{
 		"a.md": "---\nkind: bug\nkind: change\narea: maps\nstate: open\n---\n\n# A\n",
 	}, "# Next\n")
-	requireOnly(t, problems, "duplicate-key")
+	requireOnly(t, problems, "duplicate-key", Error)
 }
 
 func TestMissingKey(t *testing.T) {
 	problems := check(t, map[string]string{
 		"a.md": "---\nkind: bug\narea: maps\n---\n\n# A\n",
 	}, "# Next\n")
-	requireOnly(t, problems, "missing-key")
+	requireOnly(t, problems, "missing-key", Error)
 }
 
 func TestKind(t *testing.T) {
 	problems := check(t, map[string]string{
 		"a.md": topicBody("nonsense", "maps", "open", "A"),
 	}, "# Next\n")
-	requireOnly(t, problems, "kind")
+	requireOnly(t, problems, "kind", Error)
 }
 
 func TestArea(t *testing.T) {
@@ -151,7 +154,7 @@ func TestArea(t *testing.T) {
 		problems := check(t, map[string]string{
 			"a.md": topicBody("bug", "nowhere", "open", "A"),
 		}, "# Next\n")
-		requireOnly(t, problems, "area")
+		requireOnly(t, problems, "area", Error)
 	})
 	t.Run("not a slug when none configured", func(t *testing.T) {
 		cfg := defaultConfig()
@@ -159,7 +162,7 @@ func TestArea(t *testing.T) {
 		problems := run(t, cfg, map[string]string{
 			"a.md": topicBody("bug", "Not_A_Slug", "open", "A"),
 		}, "# Next\n", nil)
-		requireOnly(t, problems, "area")
+		requireOnly(t, problems, "area", Error)
 	})
 	t.Run("any slug when none configured", func(t *testing.T) {
 		cfg := defaultConfig()
@@ -177,28 +180,28 @@ func TestState(t *testing.T) {
 	problems := check(t, map[string]string{
 		"a.md": topicBody("bug", "maps", "done", "A"),
 	}, "# Next\n")
-	requireOnly(t, problems, "state")
+	requireOnly(t, problems, "state", Error)
 }
 
 func TestPlanMissing(t *testing.T) {
 	problems := check(t, map[string]string{
 		"a.md": topicBody("bug", "maps", "planned", "A"),
 	}, "# Next\n")
-	requireOnly(t, problems, "plan-missing")
+	requireOnly(t, problems, "plan-missing", Error)
 }
 
 func TestPlanUnexpected(t *testing.T) {
 	problems := check(t, map[string]string{
 		"a.md": "---\nkind: bug\narea: maps\nstate: open\nplan: docs/plans/P.md\n---\n\n# A\n",
 	}, "# Next\n")
-	requireOnly(t, problems, "plan-unexpected")
+	requireOnly(t, problems, "plan-unexpected", Error)
 }
 
 func TestPlanGone(t *testing.T) {
 	problems := check(t, map[string]string{
 		"a.md": "---\nkind: bug\narea: maps\nstate: planned\nplan: docs/plans/gone.md\n---\n\n# A\n",
 	}, "# Next\n")
-	requireOnly(t, problems, "plan-gone")
+	requireOnly(t, problems, "plan-gone", Error)
 }
 
 func TestPlanFound(t *testing.T) {
@@ -215,13 +218,13 @@ func TestTitle(t *testing.T) {
 		problems := check(t, map[string]string{
 			"a.md": "---\nkind: bug\narea: maps\nstate: open\n---\n\njust prose\n",
 		}, "# Next\n")
-		requireOnly(t, problems, "title")
+		requireOnly(t, problems, "title", Error)
 	})
 	t.Run("more than one", func(t *testing.T) {
 		problems := check(t, map[string]string{
 			"a.md": "---\nkind: bug\narea: maps\nstate: open\n---\n\n# One\n\n# Two\n",
 		}, "# Next\n")
-		requireOnly(t, problems, "title")
+		requireOnly(t, problems, "title", Error)
 	})
 }
 
@@ -229,14 +232,14 @@ func TestNextItem(t *testing.T) {
 	problems := check(t, map[string]string{
 		"a.md": topicBody("bug", "maps", "open", "A"),
 	}, "# Next\n\n1. no link here\n")
-	requireOnly(t, problems, "next-item")
+	requireOnly(t, problems, "next-item", Error)
 }
 
 func TestNextDuplicate(t *testing.T) {
 	problems := check(t, map[string]string{
 		"a.md": topicBody("bug", "maps", "open", "A"),
 	}, "# Next\n\n1. [A](a.md)\n2. [A again](a.md)\n")
-	requireOnly(t, problems, "next-duplicate")
+	requireOnly(t, problems, "next-duplicate", Error)
 }
 
 func TestNextTargetsMustNameTopicFiles(t *testing.T) {
@@ -293,7 +296,7 @@ func TestNextTargetsMustNameTopicFiles(t *testing.T) {
 		problems := check(t, map[string]string{
 			"a.md": topicBody("bug", "maps", "open", "A"),
 		}, "# Next\n\n1. [Bad](a)\n2. [A](a.md)\n")
-		requireOnly(t, problems, "next-item")
+		requireOnly(t, problems, "next-item", Error)
 	})
 }
 
@@ -302,13 +305,13 @@ func TestTopicLink(t *testing.T) {
 		problems := check(t, map[string]string{
 			"a.md": "---\nkind: bug\narea: maps\nstate: open\n---\n\n# A\n\nSee [gone](gone.md).\n",
 		}, "# Next\n")
-		requireOnly(t, problems, "topic-link")
+		requireOnly(t, problems, "topic-link", Error)
 	})
 	t.Run("from Next free text", func(t *testing.T) {
 		problems := check(t, map[string]string{
 			"a.md": topicBody("bug", "maps", "open", "A"),
 		}, "# Next\n\n1. [A](a.md) see [gone](gone.md)\n")
-		requireOnly(t, problems, "topic-link")
+		requireOnly(t, problems, "topic-link", Error)
 	})
 }
 
@@ -320,7 +323,7 @@ func TestCheckUsesSuppliedExistence(t *testing.T) {
 	exists[path.Join(cfg.Dir, "there.md")] = true
 
 	problems := checkBoard(t, b, exists, nil)
-	p := requireOnly(t, problems, "topic-link")
+	p := requireOnly(t, problems, "topic-link", Error)
 	if !strings.Contains(p.Message, "gone.md") {
 		t.Fatalf("problem = %+v, want the missing link", p)
 	}
@@ -360,7 +363,7 @@ func TestLink(t *testing.T) {
 	problems := check(t, map[string]string{
 		"a.md": "---\nkind: bug\narea: maps\nstate: open\n---\n\n# A\n\nSee [plan](../plans/gone.md).\n",
 	}, "# Next\n")
-	p := requireOnly(t, problems, "link")
+	p := requireOnly(t, problems, "link", Warning)
 	if p.Severity != Warning {
 		t.Errorf("severity = %q, want warning", p.Severity)
 	}
@@ -370,7 +373,7 @@ func TestNextAbsent(t *testing.T) {
 	problems := check(t, map[string]string{
 		"a.md": topicBody("bug", "maps", "open", "A"),
 	}, "")
-	p := requireOnly(t, problems, "next-absent")
+	p := requireOnly(t, problems, "next-absent", Warning)
 	if p.Severity != Warning {
 		t.Errorf("severity = %q, want warning", p.Severity)
 	}
