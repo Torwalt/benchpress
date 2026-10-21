@@ -199,6 +199,26 @@
         "reasoning": 42100,
         "cache_read": 1937792
       }
+    },
+    "1.11": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T19:54:12+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "b186f3dc4d0c173ef89b38cd3382a2b9be497c4f",
+      "attempts": 1,
+      "handover": "# Findings: 4.1 Package, dogfood and document\n\nReviewed: f885bca8845f..a4ea06ef319c, 6 files. Steps: all done; `scripts/verify`, `go test ./...`, `benchpress lint`, `nix flake check` and `nix run . -- ls` pass (run at HEAD b186f3d, whose only changes after a4ea06e are `docs/plans/FIRST_VERSION*`).\n\n## F1 — `docs/DESIGN.md` still says `tui` calls only `board` and `lint`, but `tui` depends on `repo`\n\n- Class: gap\n- Confidence: high\n- Where: `docs/DESIGN.md:272`; `internal/tui/model.go:17`, `internal/tui/model.go:32`, `internal/tui/model.go:64` (at a4ea06e)\n- Situation: the code after 3.2 (`c767c0e`, an ancestor of 4.1) imports `github.com/Torwalt/benchpress/internal/repo` in `internal/tui/model.go` and exposes `Options.Locator repo.Locator`; `docs/DESIGN.md` §10 still lists only `board` and `lint` as what `tui` calls.\n- Happens: the binding package-boundary description does not describe the built code. 3.2's handover named the dependency, but 4.1's handover claims only two contradictions and changes only §2 and §7, so the design still does not record it. A reader or later unit relying on §10 would not know `tui` depends on `repo`.\n- Should: update §10 to record the `repo` dependency (or move the `Locator` interface out of `repo` so the stated boundary remains true) in the same commit, per the 4.1 goal \"`docs/DESIGN.md` describes what was built; correct anything that drifted during the pass\" and the plan preamble's rule that a unit departing from the design changes it in the same commit and says why.\n- Test: none exists; this is a documentation correction.\n\n## F2 — The tracked installed skill and its embed source have no check keeping them equal\n\n- Class: gap\n- Confidence: medium\n- Where: `.agents/skills/benchpress/SKILL.md:1` (new tracked copy), `skills/benchpress/SKILL.md:1` (the `//go:embed` source at `embed.go:8`), `cmd/benchpress/init.go:92-104` (install/rewrite), `cmd/benchpress/init_test.go:42` (only a temp install is compared)\n- Situation: 4.1 ran `init` and committed the generated `.agents/skills/benchpress/SKILL.md` alongside the source `skills/benchpress/SKILL.md`; the two are identical at a4ea06e. A later edit to the source (the embed source the handover names) or to the tracked copy, without `benchpress init --skill`, leaves them different.\n- Happens: the repository's agents read the tracked installed copy while the binary embeds the source; nothing in `scripts/verify`, `go test ./...` or `nix flake check` compares the two. `TestInitCreatesWorkbench` compares a fresh `t.TempDir()` install with `benchpress.Skill`, not the tracked `.agents` file, so it would stay green after the tracked copy goes stale.\n- Should: keep one source (for example a symlink from the installed path to `skills/benchpress/SKILL.md`) or add a check that the tracked installed copy equals `benchpress.Skill` (and the source), so the dogfooded skill cannot silently diverge. The handover names the decision to track the installed copy but not how it stays current.\n- Test: none exists; a `scripts/verify` comparison or a test reading `.agents/skills/benchpress/SKILL.md` would fail when the copies differ.\n\n## F3 — The deferred-view topic says `board` lists every `*.md`, but `README.md` and `NEXT.md` are skipped\n\n- Class: slip\n- Confidence: high\n- Where: `docs/workbench/show-topics-another-branch-has-deleted-or-changed.md:13`; `internal/board/board.go:91` (at a4ea06e)\n- Situation: a reader takes the topic's **Now** statement literally, for example with a `README.md` in `docs/workbench`.\n- Happens: the topic says `internal/board/board.go` \"lists every `*.md` in the configured `dir` as read from disk\"; `board.Load` skips `NEXT.md` and `README.md` (and subdirectories) at `board.go:91`, and DESIGN §2 already says `README.md` is ignored. The `README.md` is not a topic, so the deferred-view premise is otherwise right, but the sentence is false as written.\n- Should: say \"every topic `*.md`\" or \"every `*.md` except `NEXT.md` and `README.md`\", matching `docs/DESIGN.md` §2.\n- Test: none exists; a fixture with a `README.md` would show it is not listed.",
+      "session_id": "ses_ea06b2703ffe3lmYutWKKhtnpY",
+      "cost_usd": 0.058276638000000006,
+      "harness": "opencode",
+      "elapsed_s": 301,
+      "session_s": 301,
+      "tokens": {
+        "input": 144885,
+        "output": 5328,
+        "reasoning": 45366,
+        "cache_read": 2042496
+      }
     }
   }
 }
