@@ -371,7 +371,10 @@ func TestReloadInvalidConfiguration(t *testing.T) {
 	})
 }
 
-func TestEditorKeyReloads(t *testing.T) {
+// editorModel returns a wide board whose editor appends a line to the selected
+// topic, and the board it was loaded from.
+func editorModel(t *testing.T) (*Model, *board.Board) {
+	t.Helper()
 	b := loadActionBoard(t, map[string]string{
 		"alpha.md": topicText("bug", "economy", "open", "Alpha"),
 	}, "")
@@ -386,6 +389,11 @@ func TestEditorKeyReloads(t *testing.T) {
 	m.execProcess = func(c *exec.Cmd, fn tea.ExecCallback) tea.Cmd {
 		return func() tea.Msg { return fn(c.Run()) }
 	}
+	return m, b
+}
+
+func TestEditorKeyReloads(t *testing.T) {
+	m, b := editorModel(t)
 
 	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
 	if cmd == nil {
@@ -407,6 +415,27 @@ func TestEditorKeyReloads(t *testing.T) {
 	}
 	if got := plainView(m.preview.View()); !strings.Contains(got, "appended by editor") {
 		t.Errorf("preview does not show the reloaded edit:\n%s", got)
+	}
+}
+
+func TestEnterOpensEditorWhenWide(t *testing.T) {
+	m, b := editorModel(t)
+	m.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
+	if m.narrow {
+		t.Fatalf("width 100 should not be narrow")
+	}
+
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd == nil {
+		t.Fatalf("enter returned no command in the wide layout")
+	}
+	m.Update(cmd())
+
+	if got := readAt(t, b.Root, "docs/workbench/alpha.md"); !strings.Contains(got, "appended by editor") {
+		t.Errorf("editor did not append:\n%s", got)
+	}
+	if got := string(m.bodies["alpha"]); !strings.Contains(got, "appended by editor") {
+		t.Errorf("bodies[alpha] = %q, want the reloaded edit", got)
 	}
 }
 
