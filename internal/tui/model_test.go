@@ -89,7 +89,7 @@ func wantSlug(t *testing.T, m *Model, want string) {
 func groupLabels(m *Model) []string {
 	var out []string
 	for _, r := range m.rows {
-		if r.kind == rowGroup {
+		if r.kind == rowGroup && r.label != nextGroupLabel {
 			out = append(out, r.label)
 		}
 	}
@@ -115,6 +115,62 @@ func TestSelectionMoves(t *testing.T) {
 	wantSlug(t, m, "war-table")
 	pressRune(m, 'g')
 	wantSlug(t, m, "raised-ground")
+}
+
+func TestViewNamesNextSection(t *testing.T) {
+	m := newTestModel(t, Options{})
+	writeTopic(t, m.board.Root, "NEXT.md",
+		"# Next\n\n1. [Presentation on raised ground](raised-ground.md)\n2. [A graphics preset](graphics-preset.md)\n")
+	b, err := board.Load(m.board.Root, m.board.Config)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	m = newTestModel(t, Options{Board: b})
+	wantSlug(t, m, "raised-ground")
+
+	heading, first := -1, -1
+	for i, r := range m.rows {
+		if r.kind == rowGroup && r.label == nextGroupLabel {
+			heading = i
+		}
+		if r.kind == rowNext && first < 0 {
+			first = i
+		}
+	}
+	if heading < 0 || first < 0 {
+		t.Fatalf("rows = %+v, want a Next heading and a Next item", m.rows)
+	}
+	if heading >= first {
+		t.Errorf("Next heading at row %d, first item at row %d; want the heading first", heading, first)
+	}
+	if m.rows[first].number != 1 || m.rows[first+1].number != 2 {
+		t.Errorf("Next numbers = %d,%d; want 1,2", m.rows[first].number, m.rows[first+1].number)
+	}
+	view := m.View()
+	if i, j := strings.Index(view, nextGroupLabel), strings.Index(view, "Presentation on raised ground"); i < 0 || j < 0 || i > j {
+		t.Errorf("view does not put the Next heading before its first item:\n%s", view)
+	}
+
+	pressRune(m, 'k')
+	wantSlug(t, m, "raised-ground")
+	if m.rows[m.cursor].kind != rowNext {
+		t.Errorf("selection rests on %v; want a Next item", m.rows[m.cursor].kind)
+	}
+	pressRune(m, 'g')
+	if m.rows[m.cursor].kind != rowNext {
+		t.Errorf("g selects %v; want a Next item", m.rows[m.cursor].kind)
+	}
+
+	pressRune(m, '/')
+	typeText(m, "war")
+	for _, r := range m.rows {
+		if r.kind == rowGroup && r.label == nextGroupLabel {
+			t.Errorf("filter with no Next match kept the Next heading: %+v", m.rows)
+		}
+	}
+	if strings.Contains(m.View(), nextGroupLabel) {
+		t.Errorf("filtered view still shows the Next heading:\n%s", m.View())
+	}
 }
 
 func TestFilterNarrowsAndClears(t *testing.T) {

@@ -21,6 +21,9 @@ import (
 // narrowWidth is the column count below which the preview pane is hidden.
 const narrowWidth = 100
 
+// nextGroupLabel names the Next section's nonselectable row.
+const nextGroupLabel = "Next"
+
 // groupings is the order tab cycles the list grouping.
 var groupings = []string{"area", "state", "kind"}
 
@@ -329,7 +332,12 @@ func (m *Model) rebuild() {
 	inNext := make(map[string]bool, len(nextSlugs))
 	for _, s := range nextSlugs {
 		inNext[s] = true
-		m.rows = append(m.rows, row{kind: rowNext, entry: bySlug[s], number: len(m.rows) + 1})
+	}
+	if len(nextSlugs) > 0 {
+		m.rows = append(m.rows, row{kind: rowGroup, label: nextGroupLabel})
+	}
+	for i, s := range nextSlugs {
+		m.rows = append(m.rows, row{kind: rowNext, entry: bySlug[s], number: i + 1})
 	}
 	var rest []board.Entry
 	for _, e := range entries {
