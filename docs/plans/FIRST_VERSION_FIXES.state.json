@@ -812,6 +812,29 @@
         "reasoning": 2122,
         "cache_read": 832256
       }
+    },
+    "5.6": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:24:03+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "febf1b058614b15f2bdeb88a62926b3c6c09d6c3",
+      "commits": [
+        "e126664fe7c9ac2e663d133d68bd738871d42ab7 tui: keep loaded board when plan lookup fails"
+      ],
+      "attempts": 1,
+      "handover": "# 5.6 handover\n\n## What landed\n\n- `e126664` — `tui: keep loaded board when plan lookup fails`.\n  `reload` now publishes the freshly loaded board, bodies, rows and preview\n  before returning a plan-lookup or lint error. A failed plan lookup clears\n  `planFound`; any incomplete refresh clears `problems`/error marks and sets\n  `lintAvailable=false`, rendering `lint unavailable` until a refresh completes\n  both steps. `change` reports `change saved; reload failed: ...`; explicit `r`\n  and editor-exit reloads report `reload failed: ...`. A read failure before\n  `board.Load` succeeds still leaves the previous board intact.\n- DESIGN §9 gains a *Reloading* paragraph for these states.\n- New tests `TestSavedChangeSurvivesLocatorFailure` and\n  `TestReloadFailureInvalidatesDerivedData`; both failed before the change.\n\n## Landmark drift\n\n- `change` stays at `actions.go:59`; `reload` starts at `:72` and its early\n  returns are gone. `editorClosedMsg` is handled at `model.go:160`;\n  `lintSummary` is `view.go:145`.\n\n## Deviations from the work order\n\n- When plan lookup fails, lint is not run at all: running it with an empty\n  `planLocator` would invent `plan-gone` errors. The full lint result is marked\n  unavailable instead, as D5 requires.\n- The recovery test uses a NEXT.md so the recovered summary is `lint clean`\n  rather than the fixture's `next-absent` warning.\n\n## What the next session must know\n\n- `Model.lintAvailable` defaults to true in `New`; only `reload` clears it.\n  Startup still aborts in `cmd/benchpress/board.go` if plan lookup or lint\n  fails, so the board never opens without complete initial lint.\n- `reload` returns only the derived-data error after publishing. Callers own the\n  status prefix, so keep the `change saved;`/`reload failed:` split when 5.7\n  changes config loading.\n- 5.7's invalid-config path cannot simply return before `board.Load`: D6 still\n  wants a successful change published via the last coherent config, with the\n  config error reported. Keep this unit's publish-then-return ordering for that\n  saved-change case.\n- `scripts/verify` and `go test ./...` are green at `e126664`. No dependency or\n  flake change, so no Nix run was needed.\n\n## Open problems\n\n- None.",
+      "session_id": "ses_e9fdeabd6ffe9EtyarSLIOitvp",
+      "cost_usd": 0.02671458,
+      "harness": "opencode",
+      "elapsed_s": 85,
+      "session_s": 84,
+      "tokens": {
+        "input": 107702,
+        "output": 5507,
+        "reasoning": 7599,
+        "cache_read": 898560
+      }
     }
   }
 }
