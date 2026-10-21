@@ -146,6 +146,9 @@ func Parse(src []byte) (Topic, []Issue) {
 	} else {
 		t.Title = headings[0].text
 		t.TitleLine = headings[0].line
+		if strings.TrimSpace(t.Title) == "" {
+			issues = append(issues, Issue{Rule: "title", Line: headings[0].line, Message: "level-one heading has no title"})
+		}
 		if firstLine != headings[0].line {
 			issues = append(issues, Issue{Rule: "title", Line: headings[0].line, Message: "level-one heading is not the first content"})
 		}
@@ -177,6 +180,10 @@ func Set(src []byte, key, value string) ([]byte, error) {
 		}
 	}
 	term := terminator(lines[closing])
+	if len(term) == 0 {
+		// An unterminated closing --- has no style of its own; keep the file's.
+		term = terminator(lines[closing-1])
+	}
 	if len(term) == 0 {
 		term = []byte("\n")
 	}

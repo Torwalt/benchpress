@@ -94,7 +94,8 @@ pass to take it. `planned` — a pass's plan has taken it. There is no done: a
 finished or dropped topic is deleted, and git keeps it.
 
 **Title.** The first non-blank line after the front matter is a level-one
-heading, `# Title`, and it is the topic's only level-one heading.
+heading, `# Title`, and it is the topic's only level-one heading. A level-one
+heading with no text is not a title.
 
 **Body.** Free Markdown. The skill (§8) gives the conventions — dated notes,
 *Now*, *Open* — and benchpress does not check them.
@@ -169,7 +170,7 @@ Errors:
 | `plan-missing` | `state: planned` without `plan` |
 | `plan-unexpected` | `plan` on a topic whose state is not `planned` |
 | `plan-gone` | the plan is found neither in the working tree nor on any local branch: its pass has probably closed, so delete the topic or change its state |
-| `title` | no level-one heading as the first content, or more than one |
+| `title` | no level-one heading as the first content, a level-one heading with no text, or more than one |
 | `next-item` | a Next item does not begin with a link to an existing topic |
 | `next-duplicate` | a topic appears twice in Next |
 | `topic-link` | a link from a topic or from Next to a `*.md` file in `dir` that does not exist |

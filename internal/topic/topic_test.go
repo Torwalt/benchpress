@@ -147,6 +147,21 @@ func TestParseStructuralIssues(t *testing.T) {
 	}
 }
 
+func TestParseEmptyTitle(t *testing.T) {
+	for _, heading := range []string{"#", "#   "} {
+		t.Run(heading, func(t *testing.T) {
+			src := "---\nkind: bug\narea: maps\nstate: open\n---\n\n" + heading + "\n"
+			got, issues := Parse([]byte(src))
+			if len(issues) != 1 || issues[0].Rule != "title" || issues[0].Line != 7 {
+				t.Fatalf("issues = %v, want one title issue at line 7", issues)
+			}
+			if got.Title != "" {
+				t.Errorf("Title = %q, want empty", got.Title)
+			}
+		})
+	}
+}
+
 func TestParseLinks(t *testing.T) {
 	src := "---\nkind: bug\narea: maps\nstate: open\n---\n\n" +
 		"# Links\n\n" +
@@ -246,6 +261,42 @@ func TestSetAppendCRLF(t *testing.T) {
 	want := "---\r\nkind: bug\r\narea: maps\r\nstate: planned\r\nplan: docs/plans/x.md\r\n---\r\n\r\n# Title\r\n"
 	if string(got) != want {
 		t.Errorf("Set =\n%q\nwant\n%q", got, want)
+	}
+}
+
+func TestSetAppendCRLFWithoutFinalNewline(t *testing.T) {
+	tests := []struct {
+		name  string
+		base  string
+		key   string
+		value string
+		want  string
+	}{
+		{
+			name:  "populated front matter",
+			base:  "---\r\nkind: bug\r\narea: maps\r\nstate: open\r\n---",
+			key:   "plan",
+			value: "docs/plans/x.md",
+			want:  "---\r\nkind: bug\r\narea: maps\r\nstate: open\r\nplan: docs/plans/x.md\r\n---",
+		},
+		{
+			name:  "empty front matter",
+			base:  "---\r\n---",
+			key:   "kind",
+			value: "bug",
+			want:  "---\r\nkind: bug\r\n---",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Set([]byte(tt.base), tt.key, tt.value)
+			if err != nil {
+				t.Fatalf("Set: %v", err)
+			}
+			if string(got) != tt.want {
+				t.Errorf("Set =\n%q\nwant\n%q", got, tt.want)
+			}
+		})
 	}
 }
 
