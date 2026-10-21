@@ -239,6 +239,28 @@
         "reasoning": 94578,
         "cache_read": 5832704
       }
+    },
+    "2.1": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T20:16:06+02:00",
+      "agent": "codex gpt-6.1-sol high",
+      "base": "076debfffebceccfd418eb76cad05cfd6c5f8bd5",
+      "commits": [
+        "93a2cb3d123b1a020898d74fbf58c7f3328595ec Record review decisions and follow-up fixes"
+      ],
+      "attempts": 1,
+      "handover": "# Triage handover\n\n52 reports became 49 distinct findings after three duplicate pairs were folded.\n47 hold: 16 slips, 25 gaps and 6 design findings. Two were dropped. No finding\nremains unsure and no additional finding was introduced.\n\nThe 44-unit fix plan is docs/plans/FIRST_VERSION_FIXES.md. It implements six\nrecommendations: exclude images from link lint; distinguish non-repository git\nerrors; inject lint file existence; escape generated Next labels with matching\nreaders; publish loaded board state despite failed enrichment; reload config.\nThe review plan ends with For the author, giving alternatives, unit mappings,\nclassification corrections, merged reports and reasons for both drops.\n\nBoth plans pass ploopy lint. The staged diff passes git diff --cached --check\nand contains only the two authorized plan documents. No source or tests were\nchanged, and no test suite was run. This handover is ignored and is not staged.",
+      "session_id": "01a15fa3-8856-7252-bb4e-493daa3be059",
+      "harness": "codex",
+      "elapsed_s": 653,
+      "session_s": 653,
+      "tokens": {
+        "input": 148869,
+        "output": 17647,
+        "reasoning": 9573,
+        "cache_read": 2298752
+      }
     }
   }
 }
