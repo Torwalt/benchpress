@@ -580,6 +580,29 @@
         "reasoning": 15494,
         "cache_read": 1448064
       }
+    },
+    "4.5": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:10:40+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "0aed7a1998a0e09fe2e4fc94bae7db4b2f5b7e7e",
+      "commits": [
+        "5205d7a93fa373f4d48413a7960762e0b8b469a7 board: test mode preservation on topic and Next rewrites"
+      ],
+      "attempts": 1,
+      "handover": "# 4.5 handover\n\n## What landed\n\n- `5205d7a` — `board: test mode preservation on topic and Next rewrites`.\n  Adds `TestWritesPreserveMode`, which chmods an existing topic and NEXT.md to\n  `0o600`, runs `SetState` and `NextAdd`, and asserts both files still have\n  `0o600`. Confirmed it fails with `writeAtomic`'s destination-mode preservation\n  temporarily removed (both files came back `0o644`), then restored the writer.\n\n## Landmark drift\n\n`writeAtomic`'s preservation is at `internal/board/edit.go:358-360` rather than\nthe cited 252-273; only line numbers moved.\n\n## Deviations from the work order\n\nNone. The test is coverage-only; production behavior was already correct and is\nunchanged. No DESIGN change: no format, command, key, lint rule or package\nboundary changed.\n\n## What the next session must know\n\n- The test lives in `internal/board/edit_test.go` directly after\n  `TestSetStateFailures` and uses the existing `loadFixture`/`topicBody`\n  helpers.\n- `writeAtomic` passes `0o644` for both calls; preservation comes solely from\n  statting the destination before the temporary file is created, so the test\n  covers both the topic and Next code paths with the same mechanism.\n\n## Open problems\n\nNone. `scripts/verify` and `go test ./...` are green at `5205d7a`.",
+      "session_id": "ses_e9fea193cffe7E0GRYjLI4S3su",
+      "cost_usd": 0.010945224000000002,
+      "harness": "opencode",
+      "elapsed_s": 32,
+      "session_s": 31,
+      "tokens": {
+        "input": 52600,
+        "output": 1926,
+        "reasoning": 1031,
+        "cache_read": 427008
+      }
     }
   }
 }
