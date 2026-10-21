@@ -1,5 +1,5 @@
-// Package board loads a workbench directory: its topics and Next, and the
-// order ls shows them in. The files are read here; nothing writes.
+// Package board loads a workbench directory: its topics and Next, the order ls
+// shows them in, and the §7 operations that write topic and Next files.
 package board
 
 import (
