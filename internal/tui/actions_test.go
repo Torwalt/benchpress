@@ -399,6 +399,15 @@ func TestEditorKeyReloads(t *testing.T) {
 	if m.status != "" {
 		t.Errorf("status = %q, want empty after a successful edit", m.status)
 	}
+	if got := string(m.bodies["alpha"]); !strings.Contains(got, "appended by editor") {
+		t.Errorf("bodies[alpha] = %q, want the reloaded edit", got)
+	}
+	if m.previewSlug != "alpha" {
+		t.Errorf("preview slug = %q, want alpha", m.previewSlug)
+	}
+	if got := plainView(m.preview.View()); !strings.Contains(got, "appended by editor") {
+		t.Errorf("preview does not show the reloaded edit:\n%s", got)
+	}
 }
 
 // failingLocator is a plan lookup that always fails, like a git corruption
