@@ -356,6 +356,19 @@ func TestNarrowHidesPreviewAndEnterToggles(t *testing.T) {
 	}
 }
 
+func TestHelpExplainsNarrowEnter(t *testing.T) {
+	m := newTestModel(t, Options{})
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 40})
+	pressRune(m, '?')
+	help := plainView(m.View())
+	if !strings.Contains(help, "e enter") || !strings.Contains(help, "open the topic in the editor") {
+		t.Errorf("help does not explain the editor binding:\n%s", help)
+	}
+	if !strings.Contains(help, "enter toggles the preview below 100 columns") {
+		t.Errorf("help does not explain Enter's narrow-layout exception:\n%s", help)
+	}
+}
+
 func TestViewNamesSelectedTitle(t *testing.T) {
 	m := newTestModel(t, Options{})
 	if !strings.Contains(m.View(), "Presentation on raised ground") {

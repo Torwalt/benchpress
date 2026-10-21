@@ -180,6 +180,7 @@ func (m *Model) helpView() string {
 		"  n              add the topic to Next, or remove it",
 		"  J K            move a Next item down or up",
 		"  e enter        open the topic in the editor",
+		"                 enter toggles the preview below 100 columns",
 		"  a              add a topic",
 		"  d              delete the topic after a y confirmation",
 		"  r              reload from disk",
