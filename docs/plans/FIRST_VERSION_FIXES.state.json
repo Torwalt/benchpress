@@ -860,6 +860,29 @@
         "reasoning": 10934,
         "cache_read": 2132992
       }
+    },
+    "5.8": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:27:18+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "488b7ec32baf17e306c3806773b6ceff5ce760ae",
+      "commits": [
+        "3421b90ca3554b6f6da3e1a2bcf3017c69d8ce06 tui: test lint refresh after a change"
+      ],
+      "attempts": 1,
+      "handover": "# 5.8 handover\n\n## What landed\n\n- `3421b90` — `tui: test lint refresh after a change`. Adds\n  `TestChangeRerunsLint`: a settled topic is planned to a missing path with a\n  locator that finds nothing. After the write, the reload must produce\n  `plan-gone`, mark the topic's path, render the `!` error mark and summarize\n  `1 error`. Pressing `s` again returns it to open, and the test requires the\n  problem, mark and error summary to disappear (`lint clean`).\n- No production code changed; this unit was a coverage-only gap.\n\n## Landmark drift\n\n- `internal/tui/actions.go` reload still does the work at the cited lines,\n  now around 89-109 (the file grew in 5.7). No landmark needed moving.\n- The existing `worktreeLocator` still reports every plan found; the new test\n  uses `locatorFunc` returning an empty map to expose `plan-gone`.\n\n## Deviations from the work order\n\n- None. The test uses an existing `NEXT.md` (`# Next\\n\\n`) so the only problem\n  after planning is the plan-gone error, making the exact `1 error` summary\n  deterministic rather than folding in `next-absent`.\n\n## What the next session must know\n\n- Verified the focused test fails both when `lint.Check` is removed from\n  `reload` (problems stay empty, summary `lint clean`) and when the\n  `m.errPaths = errorPaths(m.problems)` assignment is removed (no error mark).\n  Production was restored before committing.\n- The test checks the row through `m.topicText`, not the whole view, so it is\n  not sensitive to status-line or pane layout.\n- `scripts/verify` and `go test ./...` are green at `3421b90`. No dependency\n  change, so no Nix run was needed.\n\n## Open problems\n\n- None.",
+      "session_id": "ses_e9fdb25a7ffeuE9kFfwxhkFbPm",
+      "cost_usd": 0.015894252,
+      "harness": "opencode",
+      "elapsed_s": 50,
+      "session_s": 49,
+      "tokens": {
+        "input": 74410,
+        "output": 2544,
+        "reasoning": 2430,
+        "cache_read": 582784
+      }
     }
   }
 }
