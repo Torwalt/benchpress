@@ -350,6 +350,29 @@
         "reasoning": 2732,
         "cache_read": 688640
       }
+    },
+    "3.6": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T21:59:47+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "65c5c8cf76d6f87e236f2de42b0f0acae84741ef",
+      "commits": [
+        "58de09a069b727766cfd87f11f44265d90b080fb lint: pin empty JSON problems array"
+      ],
+      "attempts": 1,
+      "handover": "# 3.6 Pin an empty JSON problem array on a clean workbench\n\n## What landed\n\n- `lint: pin empty JSON problems array` (`58de09a`).\n- `cleanFixture` builds a workbench with an existing `NEXT.md`, one valid\n  topic, no planned topics and no findings.\n- `TestLintCleanJSON` runs the command with `--json`, requires no error (exit\n  0), and compares the raw `problems` value with `[]`, so `null` fails.\n\n## Landmark drift\n\nNone. `writeProblemsJSON` is at `cmd/benchpress/lint.go:57`; the JSON command\ntest was at `cmd/benchpress/lint_test.go:92` as cited.\n\n## Deviations from the work order\n\nNone. This is a coverage-only unit: production code was unchanged. Removing the\nnil-to-empty conversion by hand made `TestLintCleanJSON` fail with\n`problems = null, want []`; the conversion was restored before committing.\n\n## What the next session must know\n\n- `json.RawMessage` is the mechanism that distinguishes `null` from `[]`;\n  decoding into a slice would let both pass as length zero.\n- `cmd/benchpress/change_test.go` already has a similar clean `changeFixture`;\n  `cleanFixture` is deliberately local to the lint command tests.\n- `scripts/verify` and `go test ./...` were green after the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9ff437e6ffem2EhH5wIw5QJqN",
+      "cost_usd": 0.007826856000000002,
+      "harness": "opencode",
+      "elapsed_s": 41,
+      "session_s": 40,
+      "tokens": {
+        "input": 24948,
+        "output": 2467,
+        "reasoning": 1151,
+        "cache_read": 637952
+      }
     }
   }
 }
