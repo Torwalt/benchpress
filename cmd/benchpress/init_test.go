@@ -46,6 +46,57 @@ func TestInitCreatesWorkbench(t *testing.T) {
 	}
 }
 
+func TestInitFromChildUsesRoot(t *testing.T) {
+	root := t.TempDir()
+	if out, err := runRoot(t, root, "init"); err != nil {
+		t.Fatalf("init: %v\n%s", err, out)
+	}
+	child := filepath.Join(root, "sub", "dir")
+	if err := os.MkdirAll(child, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := runRoot(t, child, "init")
+	if err != nil {
+		t.Fatalf("init from child: %v\n%s", err, out)
+	}
+	if strings.TrimSpace(out) != "" {
+		t.Errorf("init from child printed %q, want nothing", out)
+	}
+	for _, rel := range initFiles {
+		if _, err := os.Lstat(filepath.Join(child, filepath.FromSlash(rel))); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("init from child created nested %s (err=%v)", rel, err)
+		}
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err != nil {
+			t.Errorf("init from child lost %s: %v", rel, err)
+		}
+	}
+}
+
+func TestInitHonorsConfiguredDirectory(t *testing.T) {
+	root := t.TempDir()
+	const cfg = "dir = \"custom\"\n"
+	writeFile(t, root, ".benchpress.toml", cfg)
+
+	out, err := runRoot(t, root, "init")
+	if err != nil {
+		t.Fatalf("init: %v\n%s", err, out)
+	}
+	if got := readAt(t, root, ".benchpress.toml"); got != cfg {
+		t.Errorf("init changed the config: %q", got)
+	}
+	if got := readAt(t, root, "custom/NEXT.md"); got != "# Next\n\n" {
+		t.Errorf("custom/NEXT.md = %q", got)
+	}
+	if !strings.Contains(out, "custom/NEXT.md") {
+		t.Errorf("init output %q does not name custom/NEXT.md", out)
+	}
+	defaultNext := filepath.Join(config.DefaultDir, "NEXT.md")
+	if _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(defaultNext))); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("init created the default-dir Next %s (err=%v)", defaultNext, err)
+	}
+}
+
 func TestInitSecondRunChangesNothing(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, ".claude/skills"), 0o755); err != nil {
