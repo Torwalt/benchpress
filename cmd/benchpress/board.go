@@ -5,6 +5,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/term"
 	"github.com/spf13/cobra"
 
 	"github.com/Torwalt/benchpress/internal/lint"
@@ -12,14 +13,11 @@ import (
 	"github.com/Torwalt/benchpress/internal/tui"
 )
 
-// stdoutIsTerminal reports whether stdout is a character device, the board's
-// condition of §7. A pipe or a file runs ls instead.
+// stdoutIsTerminal reports whether stdout is an actual terminal, the board's
+// condition of §7. A character device such as /dev/null is not enough; a pipe
+// or a file runs ls instead.
 func stdoutIsTerminal() bool {
-	info, err := os.Stdout.Stat()
-	if err != nil {
-		return false
-	}
-	return info.Mode()&os.ModeCharDevice != 0
+	return term.IsTerminal(os.Stdout.Fd())
 }
 
 // locator answers lint from plan locations already found, so opening the board
