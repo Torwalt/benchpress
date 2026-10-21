@@ -304,6 +304,29 @@
         "reasoning": 4850,
         "cache_read": 806400
       }
+    },
+    "3.4": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T21:58:00+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "0b181c0835d7cc8dce4c8c43f4adb4bc4faec5c9",
+      "commits": [
+        "2c3656e5dcbcecf8e02b42de427db99e73a88f9d lint: assert every rule's severity in tests"
+      ],
+      "attempts": 1,
+      "handover": "# 3.4 Assert the severity of every lint rule\n\n## What landed\n\n- `lint: assert every rule's severity in tests` (`2c3656e`).\n- `requireOnly` takes an explicit `Severity`, failing when the single problem's\n  severity differs from it.\n- All 17 rows of DESIGN §6 are pinned through their existing minimal fixtures:\n  15 errors (`slug`, `front-matter`, `unknown-key`, `duplicate-key`,\n  `missing-key`, `kind`, `area` both subtests, `state`, `plan-missing`,\n  `plan-unexpected`, `plan-gone`, `title` both subtests, `next-item`,\n  `next-duplicate`, `topic-link`) and 2 warnings (`link`, `next-absent`).\n\n## Landmark drift\n\nNone. `requireOnly` and every rule test were where the work order placed them.\n\n## Deviations from the work order\n\nNone. Verified the two named mutations by hand: downgrading `plan-gone` to\n`Warning` failed `TestPlanGone`, and upgrading `link` to `Error` failed\n`TestLink`; both production lines were restored before the commit.\n\n## What the next session must know\n\n- Any new rule test should pass its expected severity to `requireOnly`.\n- `TestSlug`, `TestLink` and `TestNextAbsent` still have older redundant\n  explicit severity checks; they are harmless.\n- `scripts/verify` and `go test ./...` were green after the commit.\n- No production code or DESIGN change was needed; this is a coverage-only unit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9ff5f43fffec6ywLs74riVnIA",
+      "cost_usd": 0.01415421,
+      "harness": "opencode",
+      "elapsed_s": 49,
+      "session_s": 48,
+      "tokens": {
+        "input": 62639,
+        "output": 2396,
+        "reasoning": 2805,
+        "cache_read": 545920
+      }
     }
   }
 }
