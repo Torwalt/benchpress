@@ -511,6 +511,29 @@
         "reasoning": 4603,
         "cache_read": 749312
       }
+    },
+    "4.2": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:06:08+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "34c9d548118ca145c2deee238b87c6f7c9015270",
+      "commits": [
+        "4e21d6ec9fe0de12f2f60a597b8d75ec7d822236 board: escape titles in generated Next links"
+      ],
+      "attempts": 1,
+      "handover": "# 4.2 handover\n\n## What landed\n\n- `4e21d6e` — `board: escape titles in generated Next links`. `nextText`\n  escapes `\\`, `[` and `]` in the title it writes as a Next label, using one\n  `strings.NewReplacer` (single pass, backslash first). The topic heading is\n  unchanged.\n- `TestNextTitleEscaping` covers `Fix [thing]`, `A [b](c.md)` with `c.md`\n  present, and a title with a backslash. It reparses NEXT.md after `New` and\n  `NextAdd`, checks the intended target and exact label, then exercises\n  `NextRemove` and `Remove`, requiring `c.md` to survive.\n- `TestNewNextBracketTitle` drives the commands: `new --next` preserves the\n  title, writes the escaped label, lints clean, then `next rm` and `rm` remove\n  the right entry without touching `c.md`.\n\n## Landmark drift\n\nNone. `nextText` was at `internal/board/edit.go:235`, as cited.\n\n## Deviations from the work order\n\nNone. The lint assertion lives in the command test because `internal/board`\ntests are in package `board` and importing `lint` would cycle; `lint` is\nexercised through `benchpress lint` there.\n\n## What the next session must know\n\n- Before the fix, the board tests showed `A [b](c.md)` resolving to target\n  `c.md`, and the command test showed `next rm` failing because the generated\n  item did not name `a-b-c-md.md`.\n- `strings.NewReplacer` is safe for this order: it scans the input once and\n  never rescans its replacements, so `\\` -\u003e `\\\\` cannot cascade.\n- `scripts/verify` and `go test ./...` were green before the commit.\n- DESIGN §3/§4 already specify the escape syntax from the previous unit; no\n  further document change was needed for the producer.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9feedb7bffeQ3JhSIwolUGfG5",
+      "cost_usd": 0.01951395,
+      "harness": "opencode",
+      "elapsed_s": 71,
+      "session_s": 71,
+      "tokens": {
+        "input": 78993,
+        "output": 4369,
+        "reasoning": 4150,
+        "cache_read": 851200
+      }
     }
   }
 }
