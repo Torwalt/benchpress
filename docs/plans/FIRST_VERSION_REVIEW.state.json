@@ -19,6 +19,26 @@
         "reasoning": 12671,
         "cache_read": 668416
       }
+    },
+    "1.2": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T18:58:32+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "244a46eddbfc123513a614dd389092d63a65be77",
+      "attempts": 1,
+      "handover": "# Findings: 1.2 Topic files\n\nReviewed: 4a4b5d337e43..96d29ded5a23, 2 files. Steps: all done.\n\n## F1 — Appending a field to a CRLF file whose closing `---` has no newline inserts an LF line\n\n- Class: slip\n- Confidence: high\n- Where: `internal/topic/topic.go:179`, `internal/topic/topic.go:181`\n- Situation: a CRLF topic whose closing `---` is the last line and has no\n  trailing newline, e.g. `\"---\\r\\nkind: bug\\r\\narea: maps\\r\\nstate: open\\r\\n---\"`,\n  and `Set(src, \"plan\", \"docs/plans/x.md\")`.\n- Happens: the new field takes the closing line's terminator, which is empty,\n  so the fallback is a bare LF: the output is\n  `\"---\\r\\nkind: bug\\r\\narea: maps\\r\\nstate: open\\r\\nplan: docs/plans/x.md\\n---\"`.\n  The existing bytes are kept, but the file is left with mixed CRLF/LF endings.\n  The same happens with an empty CRLF front matter ending `---` without a\n  newline. `TestSetAppendCRLF` does not catch it because its closing `---`\n  already ends in `\\r\\n`.\n- Should: keep the file's CRLF style for the appended line, as the work order's\n  \"CRLF input left CRLF\" requires and the handover claims (\"`Set` appends with\n  the closing `---`'s terminator, so CRLF files stay CRLF\"). When the closing\n  line has no terminator, use the preceding line's terminator (and only fall\n  back to `\\n` when the file has no line ending at all).\n- Test: none exists; add a `Set` append case whose closing `---` has no final\n  newline and that expects `\\r\\n` before the closing line.\n\n## F2 — Image syntax is reported as a topic link\n\n- Class: design\n- Confidence: medium\n- Where: `internal/topic/topic.go:373` (the `[` case in `collectLinks`)\n- Situation: a body containing an image, e.g. `![screenshot](img/shot.png)`.\n- Happens: the `!` falls through the `default` arm, the following `[` is parsed\n  by `parseLink`, and the image target is appended to `Topic.Links`. `lint`\n  then applies the `link`/`topic-link` rules to it, so a missing image file\n  outside `dir` is reported as a broken relative link, and an image target\n  ending in `.md` inside `dir` would be reported as a missing topic.\n- Should: the work order asks for inline Markdown links `[text](target)` and\n  `[text](target \"title\")`; an image is not a link. `docs/DESIGN.md` §3's\n  *Links* paragraph likewise says topics link to each other. Skip a `[` that is\n  immediately preceded by `!` (the handover lists this as an open problem; it\n  is still a false positive for the `link` rule).\n- Test: none exists; add a case with `![alt](missing.png)` and expect no link\n  (or, if images are to count, make that a design decision and test it).\n\n## F3 — An empty level-one heading (`#`) is accepted as the topic title\n\n- Class: slip\n- Confidence: medium\n- Where: `internal/topic/topic.go:317`\n- Situation: a topic whose first non-blank body line is `#` (or `#` followed\n  only by spaces), e.g. `\"---\\nkind: bug\\narea: maps\\nstate: open\\n---\\n\\n#\\n\"`.\n- Happens: `heading1` returns `(\"\", true)` for a line that trims to `#`, so\n  `Parse` sets `Title` to the empty string, `TitleLine` to 7, and reports no\n  `title` issue. A topic with no title text therefore passes the structural\n  checks, and `ls`/the board show an empty title.\n- Should: `docs/DESIGN.md` §3 says the first non-blank line is \"a level-one\n  heading, `# Title`\"; a bare `#` has no title, so it should be reported as a\n  `title` issue rather than accepted as an empty one.\n- Test: none exists; add a `Parse` case with a bare `#` and expect a `title`\n  issue (and no empty `Title`).",
+      "session_id": "ses_ea09e60bdffequjxCW1f6gZadf",
+      "cost_usd": 0.05149914600000001,
+      "harness": "opencode",
+      "elapsed_s": 318,
+      "session_s": 318,
+      "tokens": {
+        "input": 134631,
+        "output": 3784,
+        "reasoning": 44746,
+        "cache_read": 728832
+      }
     }
   }
 }
