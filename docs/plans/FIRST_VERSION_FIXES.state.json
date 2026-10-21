@@ -672,6 +672,31 @@
         "reasoning": 2930,
         "cache_read": 464768
       }
+    },
+    "4.9": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:15:16+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "e5957550c6604f8216412f6dca3417290a03c690",
+      "commits": [
+        "68a8c5194559821df7edb5d6126d8b94ae13f163 init: pin discovered root and configured directory"
+      ],
+      "attempts": 1,
+      "handover": "# 4.9 handover\n\n## What landed\n\n- `68a8c51` — `init: pin discovered root and configured directory`.\n  `TestInitFromChildUsesRoot` initializes a root, runs `init` again from\n  `root/sub/dir`, and requires empty output, no nested config/Next/skill under\n  the child, and the root copies intact.\n  `TestInitHonorsConfiguredDirectory` writes `dir = \"custom\"` before the first\n  init and requires `custom/NEXT.md`, byte-identical config, output naming\n  `custom/NEXT.md`, and no `docs/workbench/NEXT.md`.\n\n## Landmark drift\n\nNone. `initRoot` is still at `cmd/benchpress/init.go:53-66` and\n`installWorkbench`/`existingOrDefaultConfig` at `:68-129`, matching the cited\nregions. Tests sit after `TestInitCreatesWorkbench`.\n\n## Deviations from the work order\n\nNone. Coverage-only: production code is unchanged. I confirmed each focused\ntest fails against the named regression and restored the source:\n\n- Returning `cwd` from `initRoot` made `TestInitFromChildUsesRoot` fail, naming\n  all three nested paths.\n- Returning the default config from `existingOrDefaultConfig` made\n  `TestInitHonorsConfiguredDirectory` fail reading `custom/NEXT.md`.\n\n## What the next session must know\n\n- `runRoot` chdirs and registers a cleanup that restores the cwd at test end;\n  calling it from `root` then from the child works because each call records\n  the current directory before the next chdir.\n- The child test uses `initFiles`, so any future addition to the fresh-init set\n  is automatically checked for nesting.\n- `TestInitSkillRewrites` remains the only test writing `dir = \"custom\"` without\n  asserting the Next location; the new test covers that gap.\n- No DESIGN change: §2 already promises upward root discovery, and §7 already\n  says init uses the configured directory. No format, command, key, lint rule\n  or package boundary changed.\n- `scripts/verify` and `go test ./...` are green at `68a8c51`.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9fe6cfd7ffe4Xi60czGmZ83Ga",
+      "cost_usd": 0.013542294000000002,
+      "harness": "opencode",
+      "elapsed_s": 92,
+      "session_s": 90,
+      "verify_s": 1,
+      "test_s": 1,
+      "tokens": {
+        "input": 44409,
+        "output": 3485,
+        "reasoning": 2277,
+        "cache_read": 1141248
+      }
     }
   }
 }
