@@ -534,6 +534,29 @@
         "reasoning": 4150,
         "cache_read": 851200
       }
+    },
+    "4.3": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:07:00+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "716f976ab8c150abe06c1aafebac8fa49aa10f23",
+      "commits": [
+        "db976e281963433ec174bcdeb1e439e94e7d34b3 board: reject negative Next insertion positions"
+      ],
+      "attempts": 1,
+      "handover": "# 4.3 handover\n\n## What landed\n\n- `db976e2` — `board: reject negative Next insertion positions`.\n  `addNextItem` returns `next.ErrPosition` before constructing the item when\n  `at \u003c 0`; 0 still appends and positive positions still go through `AddAt`.\n  `NextAdd`'s comment now states that negative is a failure.\n- `TestNextAddFailures` gained a `-1` case and now snapshots NEXT.md and\n  `Next.Items` for every failing case, requiring them unchanged. Out-of-range\n  failures must wrap `next.ErrPosition`.\n- `TestNextAddNegativePosition` runs `next add victory --at -1` and requires an\n  error with NEXT.md byte-identical afterwards.\n\n## Landmark drift\n\nNone. `addNextItem`, `NextAdd` and `TestNextAddFailures` were where cited.\n\n## Deviations from the work order\n\nNone. The validation lives in `addNextItem` rather than `NextAdd`, so `New`'s\ninternal append path is covered by the same guard; both cited functions are\nunchanged in positive/zero behaviour.\n\n## What the next session must know\n\n- `next.AddAt` still rejects `at \u003c 1`; the board guard catches negatives before\n  the branch that would otherwise call `Add` (append).\n- DESIGN §7 already says `--at N` is 1-based, so no document change was needed.\n- `scripts/verify` and `go test ./...` were green before the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9fedc4fcffeleTz6E0w3p2dWD",
+      "cost_usd": 0.016479966000000002,
+      "harness": "opencode",
+      "elapsed_s": 51,
+      "session_s": 51,
+      "tokens": {
+        "input": 87649,
+        "output": 2659,
+        "reasoning": 1040,
+        "cache_read": 371072
+      }
     }
   }
 }
