@@ -373,6 +373,29 @@
         "reasoning": 1151,
         "cache_read": 637952
       }
+    },
+    "3.7": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:00:22+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "d6b539d79ea84f9f92951baa773c1f1eead9400d",
+      "commits": [
+        "13fb10414b7fffc88b44f9713d7cb67c39f115fd board: pin configured area order in listing tests"
+      ],
+      "attempts": 1,
+      "handover": "# 3.7 Pin configured area order before unconfigured areas\n\n## What landed\n\n- `board: pin configured area order in listing tests` (`13fb104`).\n- `TestListingConfiguredAreaOrder` loads a fixture configured `maps, economy`\n  with one topic in each plus unconfigured `ant` and `zebra`, then requires\n  `[maps economy ant zebra]`.\n- Removing the configured-area loop from `areaKey` made the test fail with\n  `[ant economy maps zebra]`; the loop was restored unchanged.\n\n## Landmark drift\n\nNone. `areaKey` is still at `internal/board/board.go:267`; `TestListingOrder`\nand the area tests are at the cited region of `internal/board/board_test.go`.\n\n## Deviations from the work order\n\nNone. Coverage-only: production behavior was already correct and unchanged.\n`testConfig` still uses `economy, maps`; the new test builds its own\n`config.Config` with reversed order so \"configured\" differs from alphabetical.\n\n## What the next session must know\n\n- `TestListingOrder`'s configuration (`economy, maps`) coincides with\n  alphabetical order and cannot distinguish the two; this new test is the one\n  that pins configured-before-unconfigured ordering.\n- The fixture's `ant` and `zebra` topics have lint-invalid areas but still load\n  and list, which the test relies on.\n- `scripts/verify` and `go test ./...` were green after the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9ff39779ffew74aEZ2s3z5cXd",
+      "cost_usd": 0.009135036000000001,
+      "harness": "opencode",
+      "elapsed_s": 35,
+      "session_s": 34,
+      "tokens": {
+        "input": 42490,
+        "output": 1812,
+        "reasoning": 1220,
+        "cache_read": 314112
+      }
     }
   }
 }
