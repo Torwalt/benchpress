@@ -48,10 +48,18 @@ func TestInitCreatesWorkbench(t *testing.T) {
 
 func TestInitSecondRunChangesNothing(t *testing.T) {
 	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".claude/skills"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if out, err := runRoot(t, root, "init"); err != nil {
 		t.Fatalf("init: %v\n%s", err, out)
 	}
 	before := initSnapshot(t, root)
+	link := filepath.Join(root, ".claude/skills/benchpress")
+	beforeLink, err := os.Lstat(link)
+	if err != nil {
+		t.Fatalf("lstat installed link: %v", err)
+	}
 	out, err := runRoot(t, root, "init")
 	if err != nil {
 		t.Fatalf("second init: %v\n%s", err, out)
@@ -61,6 +69,16 @@ func TestInitSecondRunChangesNothing(t *testing.T) {
 	}
 	if after := initSnapshot(t, root); !reflect.DeepEqual(before, after) {
 		t.Errorf("second init changed files:\nbefore=%v\nafter=%v", before, after)
+	}
+	afterLink, err := os.Lstat(link)
+	if err != nil {
+		t.Fatalf("lstat link after second init: %v", err)
+	}
+	if !os.SameFile(beforeLink, afterLink) {
+		t.Error("second init replaced the Claude symlink")
+	}
+	if beforeLink.Mode() != afterLink.Mode() || !beforeLink.ModTime().Equal(afterLink.ModTime()) {
+		t.Errorf("second init changed the Claude symlink's metadata:\nbefore=%v\nafter=%v", beforeLink, afterLink)
 	}
 }
 
