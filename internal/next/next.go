@@ -21,6 +21,8 @@ type Item struct {
 	Line   int    // 1-based line in the parsed source, 0 when added
 	Target string // the leading link's relative target, empty when there is none
 	Text   string // the item's content without its bullet or number
+
+	term string // the item's own line ending, empty when the source had none
 }
 
 // Next is a parsed NEXT.md: its items and the lines that are not items.
@@ -49,7 +51,8 @@ func Parse(src []byte) Next {
 	n := Next{nl: newline(src), trailing: len(src) > 0 && src[len(src)-1] == '\n'}
 	first := -1
 	for i, line := range splitLines(src) {
-		text, target, ok := parseItem(string(content(line)))
+		body := content(line)
+		text, target, ok := parseItem(string(body))
 		if !ok {
 			if first < 0 {
 				n.head = append(n.head, line)
@@ -61,7 +64,12 @@ func Parse(src []byte) Next {
 		if first < 0 {
 			first = i
 		}
-		n.Items = append(n.Items, Item{Line: i + 1, Target: target, Text: text})
+		n.Items = append(n.Items, Item{
+			Line:   i + 1,
+			Target: target,
+			Text:   text,
+			term:   string(line[len(body):]),
+		})
 	}
 	return n
 }
@@ -126,9 +134,15 @@ func (n Next) Render() []byte {
 	}
 	for i, item := range n.Items {
 		line := []byte(strconv.Itoa(i+1) + ". " + item.Text)
-		if i < len(n.Items)-1 || len(n.tail) > 0 || n.trailing {
-			line = append(line, n.nl...)
+		final := i == len(n.Items)-1 && len(n.tail) == 0
+		term := item.term
+		if final && !n.trailing {
+			// The source did not end with a newline, so its final line must not.
+			term = ""
+		} else if term == "" {
+			term = string(n.nl)
 		}
+		line = append(line, term...)
 		out = append(out, line)
 	}
 	out = append(out, n.tail...)

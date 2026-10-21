@@ -9,9 +9,9 @@ func TestParseItems(t *testing.T) {
 	src := "# Next\n\n- [a](a.md)\n2. [b](b.md) — a note\n- [c](c.md)\n"
 	n := Parse([]byte(src))
 	want := []Item{
-		{Line: 3, Target: "a.md", Text: "[a](a.md)"},
-		{Line: 4, Target: "b.md", Text: "[b](b.md) — a note"},
-		{Line: 5, Target: "c.md", Text: "[c](c.md)"},
+		{Line: 3, Target: "a.md", Text: "[a](a.md)", term: "\n"},
+		{Line: 4, Target: "b.md", Text: "[b](b.md) — a note", term: "\n"},
+		{Line: 5, Target: "c.md", Text: "[c](c.md)", term: "\n"},
 	}
 	if len(n.Items) != len(want) {
 		t.Fatalf("Items = %v, want %v", n.Items, want)
@@ -101,6 +101,74 @@ func TestRoundTripNoFinalNewline(t *testing.T) {
 	if string(got) != src {
 		t.Errorf("Render =\n%q\nwant\n%q", got, src)
 	}
+}
+
+func TestRoundTripMixedLineEndings(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+	}{
+		{"lf then crlf", "# Next\n\n1. [a](a.md)\n2. [b](b.md)\r\n3. [c](c.md)\n"},
+		{"crlf then lf", "# Next\r\n\r\n1. [a](a.md)\r\n2. [b](b.md)\n3. [c](c.md)\r\n"},
+		{"missing final newline", "# Next\n\n1. [a](a.md)\r\n2. [b](b.md)\n3. [c](c.md)"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Parse([]byte(tt.src)).Render()
+			if string(got) != tt.src {
+				t.Errorf("Render =\n%q\nwant\n%q", got, tt.src)
+			}
+		})
+	}
+}
+
+func TestMoveMixedLineEndings(t *testing.T) {
+	src := "# Next\r\n\r\n1. [a](a.md)\r\n2. [b](b.md)\n3. [c](c.md)\r\n"
+	tests := []struct {
+		name string
+		op   func(*Next) error
+		want string
+	}{
+		{
+			"first to last",
+			func(n *Next) error { return n.Move("a.md", 3) },
+			"# Next\r\n\r\n1. [b](b.md)\n2. [c](c.md)\r\n3. [a](a.md)\r\n",
+		},
+		{
+			"last to first",
+			func(n *Next) error { return n.Move("c.md", 1) },
+			"# Next\r\n\r\n1. [c](c.md)\r\n2. [a](a.md)\r\n3. [b](b.md)\n",
+		},
+		{
+			"add in the middle",
+			func(n *Next) error {
+				return n.AddAt(Item{Target: "x.md", Text: "[x](x.md)"}, 2)
+			},
+			"# Next\r\n\r\n1. [a](a.md)\r\n2. [x](x.md)\r\n3. [b](b.md)\n4. [c](c.md)\r\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := Parse([]byte(src))
+			if err := tt.op(&n); err != nil {
+				t.Fatalf("operation: %v", err)
+			}
+			if got := string(n.Render()); got != tt.want {
+				t.Errorf("Render = %q, want %q", got, tt.want)
+			}
+		})
+	}
+
+	t.Run("missing final newline", func(t *testing.T) {
+		n := Parse([]byte("# Next\r\n\r\n1. [a](a.md)\r\n2. [b](b.md)"))
+		if err := n.Move("b.md", 1); err != nil {
+			t.Fatalf("Move: %v", err)
+		}
+		want := "# Next\r\n\r\n1. [b](b.md)\r\n2. [a](a.md)"
+		if got := string(n.Render()); got != want {
+			t.Errorf("Render = %q, want %q", got, want)
+		}
+	})
 }
 
 func TestNoItems(t *testing.T) {
