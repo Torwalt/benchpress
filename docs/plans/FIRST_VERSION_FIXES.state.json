@@ -626,6 +626,29 @@
         "reasoning": 8269,
         "cache_read": 1047680
       }
+    },
+    "4.7": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:12:59+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "abc4be01b83a3a8d8024bb99c44608746c9b9ced",
+      "commits": [
+        "c8eb4a91c4c4d4eba2a5d760c86683ca1c6dbd6e init: report errors inspecting the Claude skill directory"
+      ],
+      "attempts": 1,
+      "handover": "# 4.7 handover\n\n## What landed\n\n- `c8eb4a9` — `init: report errors inspecting the Claude skill directory`.\n  `installWorkbench` now stats `.claude/skills` with a switch: not-exist skips,\n  any other error returns, a directory installs the symlink, and a\n  successfully statted non-directory still skips. The new\n  `TestInitClaudeSkillsStatError` creates a self-referential `.claude/skills`\n  symlink and requires `init` to fail.\n\n## Landmark drift\n\nThe claudeSkills check was at `cmd/benchpress/init.go:104`; after the fix the\nstat and switch are at `:104-119`. No other drift.\n\n## Deviations from the work order\n\nNone. The test uses the symlink-loop route rather than a non-searchable\ndirectory, so it needs no root skip. It asserts only the returned error; a path\nunder the loop cannot be `lstat`ed to assert the link's absence. The old code\nfails the test because it returns success.\n\n## What the next session must know\n\n- `existingOrDefaultConfig` already had the not-exist versus other-error\n  distinction; the new check follows the same shape but returns the raw\n  `os.Stat` error, not a config error.\n- No DESIGN change: §7's description of when the symlink is installed is\n  unchanged. Error propagation on an unreadable `.claude/skills` is not a\n  documented format, command, key, lint rule or package boundary.\n\n## Open problems\n\nNone. `scripts/verify` and `go test ./...` are green at `c8eb4a9`.",
+      "session_id": "ses_e9fe81331ffeIhmKagx3n6DjuK",
+      "cost_usd": 0.007340694,
+      "harness": "opencode",
+      "elapsed_s": 37,
+      "session_s": 37,
+      "tokens": {
+        "input": 25925,
+        "output": 2160,
+        "reasoning": 943,
+        "cache_read": 530048
+      }
     }
   }
 }
