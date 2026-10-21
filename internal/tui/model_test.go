@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -240,14 +241,43 @@ func TestFilterNarrowsAndClears(t *testing.T) {
 	}
 }
 
-func TestFilterMatchesSlugKindAndArea(t *testing.T) {
-	for _, q := range []string{"drafts", "change", "economy"} {
-		m := newTestModel(t, Options{})
-		pressRune(m, '/')
-		typeText(m, q)
-		if _, ok := m.selectedEntry(); !ok {
-			t.Errorf("filter %q selected nothing", q)
+// visibleSlugs is every selectable row's slug, sorted.
+func visibleSlugs(m *Model) []string {
+	var out []string
+	for _, r := range m.rows {
+		if selectable(r.kind) {
+			out = append(out, r.entry.Slug)
 		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+func TestFilterMatchesSlugKindAndArea(t *testing.T) {
+	cases := []struct {
+		query string
+		want  []string
+	}{
+		{"raised-ground", []string{"raised-ground"}},
+		{"change", []string{"taxes"}},
+		{"economy", []string{"drafts-strand", "graphics-preset", "taxes"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.query, func(t *testing.T) {
+			m := newTestModel(t, Options{})
+			pressRune(m, '/')
+			typeText(m, tc.query)
+			if got := visibleSlugs(m); !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("filter %q shows %v, want %v", tc.query, got, tc.want)
+			}
+			e, ok := m.selectedEntry()
+			if !ok {
+				t.Fatalf("filter %q selected nothing, want one of %v", tc.query, tc.want)
+			}
+			if !contains(tc.want, e.Slug) {
+				t.Errorf("filter %q selected %q, want one of %v", tc.query, e.Slug, tc.want)
+			}
+		})
 	}
 }
 
