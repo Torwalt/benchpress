@@ -789,6 +789,29 @@
         "reasoning": 6494,
         "cache_read": 2121856
       }
+    },
+    "5.5": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:22:38+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "a90c08ba1220870732efa862cab251246194e3d2",
+      "commits": [
+        "c654160d34479b72f2e8ec9247382973bf68c3b2 tui: assert exact filter matches for slug, kind and area"
+      ],
+      "attempts": 1,
+      "handover": "# 5.5 handover\n\n## What landed\n\n- `c654160` — `tui: assert exact filter matches for slug, kind and area`.\n  `TestFilterMatchesSlugKindAndArea` now checks the exact sorted set of\n  selectable row slugs for three queries and that the selection is one of them.\n  The slug case filters `raised-ground`, whose title is spaced, so only the\n  slug can match; the kind and area cases check exact sets too.\n\n## Landmark drift\n\n- The cited test is at `internal/tui/model_test.go:254` after this change; it\n  was at 243 before. `entryMatches` is still `internal/tui/model.go:373`.\n\n## Deviations from the work order\n\n- Added the local helper `visibleSlugs` (sorted selectable row slugs) so the\n  assertions are on the filtered rows rather than the rendered view.\n- Selection is asserted as membership for all cases. For `raised-ground` the\n  want set has one element, so this pins the exact selected slug; the kind and\n  area cases only promise exact sets in the work order.\n\n## What the next session must know\n\n- Both regressions were demonstrated before committing: removing `e.Slug` from\n  `entryMatches` made only the `raised-ground` subtest fail, and an early\n  `return entries` in `applyFilter` made all three subtests fail. Production\n  code was restored byte-for-byte; only the test file is committed.\n- `contains` is the existing package helper in `internal/tui/view.go:199`.\n- `scripts/verify` and `go test ./...` are green at `c654160`. No dependency or\n  flake change, so no Nix run was needed.\n\n## Open problems\n\n- None.",
+      "session_id": "ses_e9fdfa9faffe4fEG9f2E7JEJI7",
+      "cost_usd": 0.011599068,
+      "harness": "opencode",
+      "elapsed_s": 65,
+      "session_s": 64,
+      "tokens": {
+        "input": 40382,
+        "output": 2953,
+        "reasoning": 2122,
+        "cache_read": 832256
+      }
     }
   }
 }
