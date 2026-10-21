@@ -162,6 +162,29 @@
         "reasoning": 2390,
         "cache_read": 514944
       }
+    },
+    "2.2": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T21:50:09+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "33ddafb7b67782c31fcadad7eb59100410d8a8d7",
+      "commits": [
+        "b040e35e04de36fe2c2117bf9c6316bb362a8472 repo: report git failures outside the outside-repo case"
+      ],
+      "attempts": 1,
+      "handover": "# 2.2 Surface repository failures without breaking operation outside git\n\n## What landed\n\n- `repo: report git failures outside the outside-repo case` — the git runner\n  now sets `LC_ALL=C`, captures stderr and returns a `gitError` carrying the\n  command, stderr and process error. Only stderr beginning\n  `fatal: not a git repository` is classified as the outside-repo case; `Find`\n  then returns the worktree hits without error. Every other branch-enumeration\n  failure is propagated with its diagnostic.\n- Cancellation before a command start returns `ctx.Err()` directly.\n- New tests: `TestFindCorruptRefsReturnsError` (malformed packed-refs),\n  `TestFindDoesNotSuppressOtherFailures` (pre-cancelled context and no `git` on\n  `PATH`). `TestFindOutsideRepository` is unchanged and still passes.\n- DESIGN §5 documents `LC_ALL=C`, retained stderr, the exact outside-repo\n  diagnostic, and propagation of all other failures.\n\n## Landmark drift\n\nEvidence cited `internal/repo/repo.go:63-75,98-103`; after unit 2.1 the runner is\nat the `New` literal (now ~64-95), `Find` at ~97 and `branches` at ~145.\n\n## Deviations from the work order\n\n- Added `withoutLocale`, which removes an inherited `LC_ALL` before appending\n  `LC_ALL=C`. On Unix a duplicate `LC_ALL` is not reliably overridden.\n- The cancellation test cancels before the call; that exercises the explicit\n  `ctx.Err()` pre-check. Cancellation mid-command still propagates the process\n  error (typically `signal: killed`), not necessarily `context.Canceled`.\n- On a non-outside-repo failure `Find` returns the partial worktree map along\n  with the error; callers in `lint` and `cmd` discard the map when err != nil.\n\n## What the next session must know\n\n- `errNotRepository` is package-private and matched via `errors.Is` through\n  `gitError.Is`. Do not switch to matching exit code 128; other fatal errors\n  also use 128.\n- `gitError.Unwrap` preserves the original `*exec.ExitError` / `*exec.Error`, so\n  `errors.Is(err, context.Canceled)` only holds for the pre-check path.\n- `New` is the only place the command environment is built; test wrappers that\n  replace `r.run` bypass the locale and stderr behavior.\n- `scripts/verify` and `go test ./...` were green before the commit.\n\n## Open problems\n\nNone for this unit. The plan's next stage unit (2.3, lint) is not started.",
+      "session_id": "ses_e9ffd81b7ffesLPWxLGlDY70A4",
+      "cost_usd": 0.012142001999999999,
+      "harness": "opencode",
+      "elapsed_s": 72,
+      "session_s": 71,
+      "tokens": {
+        "input": 30367,
+        "output": 4139,
+        "reasoning": 4376,
+        "cache_read": 825984
+      }
     }
   }
 }
