@@ -169,7 +169,7 @@ func (b *Board) NextIndex(slug string) int { return b.nextIndex(slug) }
 func (b *Board) nextIndex(slug string) int {
 	slug = strings.TrimSuffix(slug, ".md")
 	for i, item := range b.Next.Items {
-		if targetSlug(item.Target) == slug {
+		if b.NextSlug(item.Target) == slug {
 			return i
 		}
 	}

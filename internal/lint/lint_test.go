@@ -223,6 +223,84 @@ func TestNextDuplicate(t *testing.T) {
 	requireOnly(t, problems, "next-duplicate")
 }
 
+func TestNextTargetsMustNameTopicFiles(t *testing.T) {
+	cases := []struct {
+		name    string
+		target  string
+		present bool
+		valid   bool
+	}{
+		{"plain", "a.md", false, true},
+		{"dot slash", "./a.md", false, true},
+		{"normalized", "sub/../a.md", false, true},
+		{"no suffix", "a", false, false},
+		{"subdirectory absent", "sub/a.md", false, false},
+		{"subdirectory present", "sub/a.md", true, false},
+		{"outside absent", "../outside/a.md", false, false},
+		{"outside present", "../outside/a.md", true, false},
+		{"missing topic", "b.md", false, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			root := t.TempDir()
+			dir := filepath.Join(root, filepath.FromSlash(defaultConfig().Dir))
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				t.Fatalf("mkdir: %v", err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, "a.md"), []byte(topicBody("bug", "maps", "open", "A")), 0o644); err != nil {
+				t.Fatalf("write a.md: %v", err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, "NEXT.md"), []byte("# Next\n\n1. [A]("+c.target+")\n"), 0o644); err != nil {
+				t.Fatalf("write NEXT.md: %v", err)
+			}
+			if c.present {
+				full := filepath.Join(dir, filepath.FromSlash(c.target))
+				if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+					t.Fatalf("mkdir target: %v", err)
+				}
+				if err := os.WriteFile(full, []byte("outside\n"), 0o644); err != nil {
+					t.Fatalf("write target: %v", err)
+				}
+			}
+			b, err := board.Load(root, defaultConfig())
+			if err != nil {
+				t.Fatalf("Load: %v", err)
+			}
+			problems, err := Check(context.Background(), b, fakeLocator(nil))
+			if err != nil {
+				t.Fatalf("Check: %v", err)
+			}
+
+			var nextItems, duplicates int
+			for _, p := range problems {
+				switch p.Rule {
+				case "next-item":
+					nextItems++
+				case "next-duplicate":
+					duplicates++
+				}
+			}
+			wantItems := 1
+			if c.valid {
+				wantItems = 0
+			}
+			if nextItems != wantItems {
+				t.Errorf("next-item count = %d, want %d (%+v)", nextItems, wantItems, problems)
+			}
+			if duplicates != 0 {
+				t.Errorf("next-duplicate count = %d, want 0 (%+v)", duplicates, problems)
+			}
+		})
+	}
+
+	t.Run("invalid then valid", func(t *testing.T) {
+		problems := check(t, map[string]string{
+			"a.md": topicBody("bug", "maps", "open", "A"),
+		}, "# Next\n\n1. [Bad](a)\n2. [A](a.md)\n")
+		requireOnly(t, problems, "next-item")
+	})
+}
+
 func TestTopicLink(t *testing.T) {
 	t.Run("from a topic", func(t *testing.T) {
 		problems := check(t, map[string]string{

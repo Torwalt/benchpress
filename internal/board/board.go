@@ -168,7 +168,7 @@ func (b *Board) Listing(f Filter, planFound map[string][]string) ([]string, []En
 	nextSlugs := []string{}
 	inNext := make(map[string]bool)
 	for _, item := range b.Next.Items {
-		slug := targetSlug(item.Target)
+		slug := b.NextSlug(item.Target)
 		if slug == "" || inNext[slug] {
 			continue
 		}
@@ -281,10 +281,17 @@ func stateRank(state string) int {
 	return 3
 }
 
-// targetSlug turns a Next item's link target into the slug it names.
-func targetSlug(target string) string {
-	if target == "" {
+// NextSlug returns the slug a Next target names when it is a relative path
+// that normalizes to a topic file directly in the configured directory, or ""
+// for anything else.
+func (b *Board) NextSlug(target string) string {
+	if target == "" || path.IsAbs(target) || !strings.HasSuffix(target, ".md") {
 		return ""
 	}
-	return strings.TrimSuffix(path.Base(target), ".md")
+	dir := path.Clean(b.Config.Dir)
+	resolved := path.Clean(path.Join(dir, target))
+	if path.Dir(resolved) != dir {
+		return ""
+	}
+	return strings.TrimSuffix(path.Base(resolved), ".md")
 }

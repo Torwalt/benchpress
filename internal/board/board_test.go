@@ -76,6 +76,77 @@ func TestListingOrder(t *testing.T) {
 	}
 }
 
+func TestNextTargetsMustNameTopicFiles(t *testing.T) {
+	cases := []struct {
+		name    string
+		target  string
+		present bool
+		want    string
+	}{
+		{"plain", "a.md", false, "a"},
+		{"dot slash", "./a.md", false, "a"},
+		{"normalized", "sub/../a.md", false, "a"},
+		{"no suffix", "a", false, ""},
+		{"subdirectory absent", "sub/a.md", false, ""},
+		{"subdirectory present", "sub/a.md", true, ""},
+		{"outside absent", "../outside/a.md", false, ""},
+		{"outside present", "../outside/a.md", true, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeTopic(t, root, "a.md", topicBody("bug", "maps", "open", "A"))
+			if c.present {
+				full := filepath.Join(root, "docs", "workbench", filepath.FromSlash(c.target))
+				if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+					t.Fatalf("mkdir: %v", err)
+				}
+				if err := os.WriteFile(full, []byte("outside\n"), 0o644); err != nil {
+					t.Fatalf("write: %v", err)
+				}
+			}
+			writeTopic(t, root, "NEXT.md", "# Next\n\n1. [A]("+c.target+")\n")
+			b, err := Load(root, testConfig())
+			if err != nil {
+				t.Fatalf("Load: %v", err)
+			}
+
+			nextSlugs, entries := b.Listing(Filter{}, nil)
+			want := []string{}
+			wantIndex := -1
+			if c.want != "" {
+				want = []string{c.want}
+				wantIndex = 0
+			}
+			if !reflect.DeepEqual(nextSlugs, want) {
+				t.Errorf("next = %v, want %v", nextSlugs, want)
+			}
+			if got := slugs(entries); !reflect.DeepEqual(got, []string{"a"}) {
+				t.Errorf("entries = %v, want only a", got)
+			}
+			if got := b.NextIndex("a"); got != wantIndex {
+				t.Errorf("NextIndex(a) = %d, want %d", got, wantIndex)
+			}
+		})
+	}
+
+	t.Run("invalid then valid", func(t *testing.T) {
+		b := loadFixture(t, map[string]string{
+			"a.md": topicBody("bug", "maps", "open", "A"),
+		}, "# Next\n\n1. [Bad](sub/a.md)\n2. [A](a.md)\n")
+		nextSlugs, entries := b.Listing(Filter{}, nil)
+		if !reflect.DeepEqual(nextSlugs, []string{"a"}) {
+			t.Errorf("next = %v, want only a", nextSlugs)
+		}
+		if got := slugs(entries); !reflect.DeepEqual(got, []string{"a"}) {
+			t.Errorf("entries = %v, want only a", got)
+		}
+		if got := b.NextIndex("a"); got != 1 {
+			t.Errorf("NextIndex(a) = %d, want the valid item at 1", got)
+		}
+	})
+}
+
 func TestListingIgnoresReadmeAndSubdirectories(t *testing.T) {
 	b := loadFixture(t, map[string]string{
 		"a.md":          topicBody("bug", "maps", "open", "A"),

@@ -126,9 +126,13 @@ The only place order lives.
 
 - An **item** is a list line: `N. ` or `- ` at the start of the line. Each item
   begins with a link to a topic in `dir`, and may continue with free text after
-  the link. Lines that are not items — the heading, prose, blank lines — are
-  kept as they are and not checked.
-- A topic appears in Next at most once.
+  the link. The target is a relative path that normalizes to a Markdown file
+  directly in `dir`: `./a.md` names `a.md`, while `a`, `sub/a.md` and
+  `../outside/a.md` do not. Lines that are not items — the heading, prose, blank
+  lines — are kept as they are and not checked.
+- A topic appears in Next at most once. An item whose target does not name a
+  directly contained topic file is not a position for any topic, so it does not
+  make a later valid item a duplicate.
 - When benchpress rewrites Next (add, remove, move), it keeps every non-item
   line, keeps each item's text, writes all items as one contiguous numbered
   block (`1. `, `2. `, …) where the first item stood, and writes the file

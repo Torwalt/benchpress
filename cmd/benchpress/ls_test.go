@@ -82,6 +82,51 @@ func TestLS(t *testing.T) {
 	}
 }
 
+func TestLSInvalidNextTarget(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(root))
+	writeFile(t, root, ".benchpress.toml", "dir = \"work\"\nareas = [\"economy\", \"maps\"]\n")
+	writeFile(t, root, "work/NEXT.md", "# Next\n\n1. [A](sub/a.md)\n")
+	writeFile(t, root, "work/a.md", "---\nkind: bug\narea: maps\nstate: open\n---\n\n# A\n")
+
+	out, err := runLS(t, root)
+	if err != nil {
+		t.Fatalf("ls: %v\n%s", err, out)
+	}
+	if strings.Contains(out, "Next") {
+		t.Errorf("invalid Next target listed under Next:\n%s", out)
+	}
+	row := "  a  open  bug  A"
+	if !strings.Contains(out, "maps") || !strings.Contains(out, row) {
+		t.Fatalf("a not in its area group:\n%s", out)
+	}
+	if strings.Index(out, "maps") > strings.Index(out, row) {
+		t.Errorf("a listed before its area group:\n%s", out)
+	}
+
+	jsonOut, err := runLS(t, root, "--json")
+	if err != nil {
+		t.Fatalf("ls --json: %v\n%s", err, jsonOut)
+	}
+	var got struct {
+		Next   []string `json:"next"`
+		Topics []struct {
+			Slug string `json:"slug"`
+			Area string `json:"area"`
+		} `json:"topics"`
+	}
+	if err := json.Unmarshal([]byte(jsonOut), &got); err != nil {
+		t.Fatalf("unmarshal: %v\n%s", err, jsonOut)
+	}
+	if len(got.Next) != 0 {
+		t.Errorf("next = %v, want empty", got.Next)
+	}
+	if len(got.Topics) != 1 || got.Topics[0].Slug != "a" || got.Topics[0].Area != "maps" {
+		t.Errorf("topics = %+v, want a in maps", got.Topics)
+	}
+}
+
 func TestLSJSON(t *testing.T) {
 	root := fixture(t)
 	out, err := runLS(t, root, "--json")

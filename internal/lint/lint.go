@@ -137,7 +137,7 @@ func (c *checker) checkNext() {
 	nextPath := path.Join(c.dir, "NEXT.md")
 	seen := make(map[string]bool)
 	for _, item := range c.board.Next.Items {
-		slug := targetSlug(item.Target)
+		slug := c.board.NextSlug(item.Target)
 		switch {
 		case slug == "" || !c.topics[slug]:
 			c.add(Error, nextPath, item.Line, "next-item", nextItemMessage(slug, item.Target))
@@ -186,13 +186,6 @@ func (c *checker) add(severity Severity, p string, line int, rule, message strin
 func (c *checker) exists(rel string) bool {
 	_, err := os.Stat(filepath.Join(c.board.Root, filepath.FromSlash(rel)))
 	return err == nil
-}
-
-func targetSlug(target string) string {
-	if !strings.HasSuffix(target, ".md") {
-		return ""
-	}
-	return strings.TrimSuffix(path.Base(target), ".md")
 }
 
 func nextItemMessage(slug, target string) string {
