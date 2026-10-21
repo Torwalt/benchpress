@@ -91,10 +91,7 @@ func installWorkbench(root string, rewriteSkill bool) ([]string, error) {
 
 	fullSkill := filepath.Join(root, filepath.FromSlash(skillFile))
 	if rewriteSkill {
-		if err := os.MkdirAll(filepath.Dir(fullSkill), 0o755); err != nil {
-			return nil, err
-		}
-		if err := os.WriteFile(fullSkill, []byte(benchpress.Skill), 0o644); err != nil {
+		if err := writeAtomic(fullSkill, []byte(benchpress.Skill), 0o644); err != nil {
 			return nil, err
 		}
 		add(skillFile)
@@ -142,8 +139,19 @@ func defaultConfigFile() []byte {
 	return []byte(b.String())
 }
 
+// writeData and closeFile are seams so tests can fail a write partway without
+// limiting the whole process.
+var (
+	writeData = func(f *os.File, data []byte) error {
+		_, err := f.Write(data)
+		return err
+	}
+	closeFile = func(f *os.File) error { return f.Close() }
+)
+
 // createOnly writes data to name unless it already exists, reporting whether it
-// wrote. O_EXCL makes the check and the create one step.
+// wrote. O_EXCL makes the check and the create one step. A failed write or
+// close removes the target it just created so a retry can install it whole.
 func createOnly(name string, data []byte) (bool, error) {
 	if err := os.MkdirAll(filepath.Dir(name), 0o755); err != nil {
 		return false, err
@@ -155,14 +163,44 @@ func createOnly(name string, data []byte) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if _, err := f.Write(data); err != nil {
-		_ = f.Close()
-		return false, err
+	if err := writeData(f, data); err != nil {
+		_ = closeFile(f)
+		return false, errors.Join(err, os.Remove(name))
 	}
-	if err := f.Close(); err != nil {
-		return false, err
+	if err := closeFile(f); err != nil {
+		return false, errors.Join(err, os.Remove(name))
 	}
 	return true, nil
+}
+
+// writeAtomic writes data through a temporary file in the same directory and a
+// rename, keeping name's mode when it stands there already.
+func writeAtomic(name string, data []byte, mode fs.FileMode) error {
+	if info, err := os.Stat(name); err == nil {
+		mode = info.Mode().Perm()
+	}
+	dir := filepath.Dir(name)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(dir, "."+filepath.Base(name)+".*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	defer func() { _ = os.Remove(tmpName) }()
+	if err := writeData(tmp, data); err != nil {
+		_ = closeFile(tmp)
+		return err
+	}
+	if err := tmp.Chmod(mode); err != nil {
+		_ = closeFile(tmp)
+		return err
+	}
+	if err := closeFile(tmp); err != nil {
+		return err
+	}
+	return os.Rename(tmpName, name)
 }
 
 // symlinkOnly creates a symlink unless something already stands at its path.

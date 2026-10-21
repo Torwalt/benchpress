@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -121,6 +123,170 @@ func TestSkillCmdPrintsEmbedded(t *testing.T) {
 	}
 	if out != benchpress.Skill {
 		t.Errorf("skill output differs from the embedded skill")
+	}
+}
+
+var (
+	errInjectedWrite = errors.New("injected write failure")
+	errInjectedClose = errors.New("injected close failure")
+)
+
+// injectWriteFailure writes n bytes and then fails until the returned restore
+// runs. The cleanup keeps a failed test from leaking the seam.
+func injectWriteFailure(t *testing.T, n int) (restore func()) {
+	t.Helper()
+	original := writeData
+	limit := n
+	writeData = func(f *os.File, data []byte) error {
+		if limit > len(data) {
+			limit = len(data)
+		}
+		if _, err := f.Write(data[:limit]); err != nil {
+			return err
+		}
+		return errInjectedWrite
+	}
+	restore = func() { writeData = original }
+	t.Cleanup(restore)
+	return restore
+}
+
+// injectCloseFailure closes the file and then reports a close failure.
+func injectCloseFailure(t *testing.T) (restore func()) {
+	t.Helper()
+	original := closeFile
+	closeFile = func(f *os.File) error {
+		_ = f.Close()
+		return errInjectedClose
+	}
+	restore = func() { closeFile = original }
+	t.Cleanup(restore)
+	return restore
+}
+
+func TestCreateOnlyWriteFailureLeavesNoTarget(t *testing.T) {
+	root := t.TempDir()
+	name := filepath.Join(root, "SKILL.md")
+	restore := injectWriteFailure(t, 8)
+
+	ok, err := createOnly(name, []byte(benchpress.Skill))
+	if err == nil {
+		t.Fatal("createOnly succeeded, want the injected write failure")
+	}
+	if ok {
+		t.Error("createOnly reported a write")
+	}
+	if _, err := os.Stat(name); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("partial target left behind: %v", err)
+	}
+
+	restore()
+	if ok, err := createOnly(name, []byte(benchpress.Skill)); err != nil || !ok {
+		t.Fatalf("retry createOnly = %v, %v", ok, err)
+	}
+	if got := readAt(t, root, "SKILL.md"); got != benchpress.Skill {
+		t.Errorf("retry did not install the whole skill")
+	}
+}
+
+func TestCreateOnlyCloseFailureLeavesNoTarget(t *testing.T) {
+	root := t.TempDir()
+	name := filepath.Join(root, "SKILL.md")
+	restore := injectCloseFailure(t)
+
+	ok, err := createOnly(name, []byte(benchpress.Skill))
+	if err == nil {
+		t.Fatal("createOnly succeeded, want the injected close failure")
+	}
+	if ok {
+		t.Error("createOnly reported a write")
+	}
+	if _, err := os.Stat(name); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("partial target left behind: %v", err)
+	}
+
+	restore()
+	if ok, err := createOnly(name, []byte(benchpress.Skill)); err != nil || !ok {
+		t.Fatalf("retry createOnly = %v, %v", ok, err)
+	}
+	if got := readAt(t, root, "SKILL.md"); got != benchpress.Skill {
+		t.Errorf("retry did not install the whole skill")
+	}
+}
+
+func TestCreateOnlyLeavesExistingFile(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "SKILL.md", "kept\n")
+
+	ok, err := createOnly(filepath.Join(root, "SKILL.md"), []byte(benchpress.Skill))
+	if err != nil {
+		t.Fatalf("createOnly: %v", err)
+	}
+	if ok {
+		t.Error("createOnly overwrote an existing file")
+	}
+	if got := readAt(t, root, "SKILL.md"); got != "kept\n" {
+		t.Errorf("existing file changed: %q", got)
+	}
+}
+
+func TestInitSkillRewriteFailurePreservesOldFile(t *testing.T) {
+	const old = "previous skill\n"
+	root := t.TempDir()
+	if out, err := runRoot(t, root, "init"); err != nil {
+		t.Fatalf("init: %v\n%s", err, out)
+	}
+	writeFile(t, root, ".agents/skills/benchpress/SKILL.md", old)
+	skillPath := filepath.Join(root, ".agents/skills/benchpress/SKILL.md")
+	if err := os.Chmod(skillPath, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	restore := injectWriteFailure(t, 8)
+	if out, err := runRoot(t, root, "init", "--skill"); err == nil {
+		t.Fatalf("init --skill succeeded despite the injected write failure\n%s", out)
+	}
+	assertSkill(t, root, old, 0o600)
+
+	restore()
+	if out, err := runRoot(t, root, "init", "--skill"); err != nil {
+		t.Fatalf("retry init --skill: %v\n%s", err, out)
+	}
+	assertSkill(t, root, benchpress.Skill, 0o600)
+}
+
+func TestInitSkillRewriteCloseFailurePreservesOldFile(t *testing.T) {
+	const old = "previous skill\n"
+	root := t.TempDir()
+	if out, err := runRoot(t, root, "init"); err != nil {
+		t.Fatalf("init: %v\n%s", err, out)
+	}
+	writeFile(t, root, ".agents/skills/benchpress/SKILL.md", old)
+
+	restore := injectCloseFailure(t)
+	if out, err := runRoot(t, root, "init", "--skill"); err == nil {
+		t.Fatalf("init --skill succeeded despite the injected close failure\n%s", out)
+	}
+	assertSkill(t, root, old, 0o644)
+
+	restore()
+	if out, err := runRoot(t, root, "init", "--skill"); err != nil {
+		t.Fatalf("retry init --skill: %v\n%s", err, out)
+	}
+	assertSkill(t, root, benchpress.Skill, 0o644)
+}
+
+func assertSkill(t *testing.T, root, body string, mode fs.FileMode) {
+	t.Helper()
+	if got := readAt(t, root, ".agents/skills/benchpress/SKILL.md"); got != body {
+		t.Errorf("skill = %q, want %q", got, body)
+	}
+	info, err := os.Stat(filepath.Join(root, ".agents/skills/benchpress/SKILL.md"))
+	if err != nil {
+		t.Fatalf("stat skill: %v", err)
+	}
+	if got := info.Mode().Perm(); got != mode {
+		t.Errorf("skill mode = %v, want %v", got, mode)
 	}
 }
 
