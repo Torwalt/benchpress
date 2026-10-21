@@ -277,6 +277,15 @@ failed: …`; an explicit reload reports `reload failed: …`. A read failure
 before any new board is available keeps the previous board and reports the
 refresh failure.
 
+Every reload re-reads `.benchpress.toml` at the board's established root,
+never rediscovering a different root. A valid configuration replaces the
+previous one, including `dir`, `kinds` and `areas`; a changed directory is
+loaded, later writes go there, and the selection stays on the same slug when
+the new workbench still has it. An invalid configuration keeps the last
+coherent configuration and reports the refresh error. When a change has already
+been written, the reload still loads the disk with that last coherent
+configuration so the change is shown, and reports the configuration error.
+
 ## 10. Packages
 
 ```
@@ -301,6 +310,7 @@ internal/tui       the board of §9: bubbletea, bubbles, lipgloss, glamour
   neither git nor a filesystem. The board answers the existence query.
 - `repo` never runs a git command that writes.
 - `tui` calls `board` and `lint`; it never edits a file itself. It takes a
-  `repo.Locator` to find plans on reload.
+  `repo.Locator` to find plans on reload, and reads `.benchpress.toml` through
+  `config` on every reload at the board's established root, without writing it.
 - Dependencies stay few: cobra, BurntSushi/toml, and charmbracelet's bubbletea,
   bubbles, lipgloss and glamour. No YAML library, no file watcher.

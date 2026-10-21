@@ -37,10 +37,10 @@ func loadActionBoard(t *testing.T, topics map[string]string, next string) *board
 	if next != "" {
 		writeTopic(t, root, "NEXT.md", next)
 	}
-	cfg := &config.Config{
-		Dir:   "docs/workbench",
-		Kinds: []string{"bug", "change", "design", "idea"},
-		Areas: []string{"economy", "maps"},
+	writeConfig(t, root, "docs/workbench", []string{"bug", "change", "design", "idea"}, []string{"economy", "maps"})
+	cfg, err := config.Load(root)
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
 	}
 	b, err := board.Load(root, cfg)
 	if err != nil {
@@ -251,6 +251,124 @@ func TestReloadKeyPicksUpDisk(t *testing.T) {
 	if !strings.Contains(m.View(), "Gamma") {
 		t.Errorf("reload did not pick up a topic added on disk:\n%s", m.View())
 	}
+}
+
+func TestReloadReadsConfiguration(t *testing.T) {
+	b := loadActionBoard(t, map[string]string{
+		"alpha.md": topicText("bug", "economy", "open", "Alpha"),
+	}, "")
+	m := newActionModel(t, b)
+	wantSlug(t, m, "alpha")
+
+	writeConfig(t, b.Root, "docs/workbench",
+		[]string{"bug", "change", "design", "idea", "art"},
+		[]string{"economy", "maps", "space"})
+	pressRune(m, 'r')
+	if !contains(m.board.Config.Kinds, "art") || !contains(m.board.Config.Areas, "space") {
+		t.Fatalf("configuration after r = %+v, want the new kind and area", m.board.Config)
+	}
+
+	pressRune(m, 'a')
+	typeText(m, "An art piece")
+	pressType(m, tea.KeyEnter)
+	typeText(m, "art")
+	pressType(m, tea.KeyEnter)
+	typeText(m, "space")
+	pressType(m, tea.KeyEnter)
+
+	body := readAt(t, b.Root, "docs/workbench/an-art-piece.md")
+	for _, want := range []string{"kind: art\n", "area: space\n"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("new topic missing %q:\n%s", want, body)
+		}
+	}
+}
+
+func TestReloadSwitchesConfiguredDirectory(t *testing.T) {
+	b := loadActionBoard(t, map[string]string{
+		"alpha.md": topicText("bug", "economy", "open", "Alpha"),
+	}, "")
+	m := newActionModel(t, b)
+	wantSlug(t, m, "alpha")
+
+	writeTopicIn(t, b.Root, "docs/other", "alpha.md", topicText("bug", "economy", "open", "Alpha moved"))
+	writeTopicIn(t, b.Root, "docs/other", "beta.md", topicText("design", "maps", "open", "Beta"))
+	writeConfig(t, b.Root, "docs/other", []string{"bug", "change", "design", "idea"}, []string{"economy", "maps"})
+
+	pressRune(m, 'r')
+	if m.board.Config.Dir != "docs/other" {
+		t.Fatalf("configured dir after r = %q, want docs/other", m.board.Config.Dir)
+	}
+	if !strings.Contains(m.View(), "Beta") {
+		t.Errorf("reload did not show the newly configured workbench:\n%s", m.View())
+	}
+	wantSlug(t, m, "alpha")
+
+	pressRune(m, 'n')
+	if next := readAt(t, b.Root, "docs/other/NEXT.md"); !strings.Contains(next, "[Alpha moved](alpha.md)") {
+		t.Errorf("write went to the wrong workbench:\n%s", next)
+	}
+	if _, err := os.Stat(filepath.Join(b.Root, "docs/workbench/NEXT.md")); !os.IsNotExist(err) {
+		t.Errorf("old workbench was written: err=%v", err)
+	}
+}
+
+func TestReloadInvalidConfiguration(t *testing.T) {
+	t.Run("explicit reload keeps the prior data", func(t *testing.T) {
+		b := loadActionBoard(t, map[string]string{
+			"alpha.md": topicText("bug", "economy", "open", "Alpha"),
+		}, "")
+		m := newActionModel(t, b)
+		wantSlug(t, m, "alpha")
+
+		writeTopic(t, b.Root, "gamma.md", topicText("design", "maps", "open", "Gamma"))
+		if err := os.WriteFile(filepath.Join(b.Root, config.FileName), []byte("unknown = true\n"), 0o644); err != nil {
+			t.Fatalf("write config: %v", err)
+		}
+		pressRune(m, 'r')
+
+		for _, want := range []string{"reload failed", "unknown key"} {
+			if !strings.Contains(m.status, want) {
+				t.Errorf("status = %q, want it to contain %q", m.status, want)
+			}
+		}
+		if strings.Contains(m.View(), "Gamma") {
+			t.Errorf("explicit reload published the disk under an invalid config:\n%s", m.View())
+		}
+		wantSlug(t, m, "alpha")
+		if !contains(m.board.Config.Kinds, "idea") || !contains(m.board.Config.Areas, "maps") {
+			t.Errorf("configuration after a failed reload = %+v, want the prior one", m.board.Config)
+		}
+	})
+
+	t.Run("saved change publishes the disk under the prior config", func(t *testing.T) {
+		b := loadActionBoard(t, map[string]string{
+			"alpha.md": topicText("bug", "economy", "open", "Alpha"),
+		}, "")
+		m := newActionModel(t, b)
+		wantSlug(t, m, "alpha")
+
+		if err := os.WriteFile(filepath.Join(b.Root, config.FileName), []byte("unknown = true\n"), 0o644); err != nil {
+			t.Fatalf("write config: %v", err)
+		}
+		pressRune(m, 's')
+
+		if got := readAt(t, b.Root, "docs/workbench/alpha.md"); !strings.Contains(got, "state: settled\n") {
+			t.Fatalf("saved state on disk =\n%s", got)
+		}
+		e, ok := m.selectedEntry()
+		if !ok || e.Slug != "alpha" || e.State != "settled" {
+			t.Errorf("selected entry = %+v, %v; want the saved alpha state", e, ok)
+		}
+		for _, want := range []string{"change saved", "reload failed", "unknown key"} {
+			if !strings.Contains(m.status, want) {
+				t.Errorf("status = %q, want it to contain %q", m.status, want)
+			}
+		}
+		if !contains(m.board.Config.Kinds, "idea") || !contains(m.board.Config.Areas, "maps") {
+			t.Errorf("configuration after a failed reload = %+v, want the prior one", m.board.Config)
+		}
+	})
 }
 
 func TestEditorKeyReloads(t *testing.T) {

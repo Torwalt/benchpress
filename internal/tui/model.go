@@ -162,7 +162,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.status = msg.err.Error()
 		}
-		if err := m.reload(); err != nil {
+		if err := m.reload(false); err != nil {
 			m.status = "reload failed: " + err.Error()
 		}
 		return m, nil
@@ -230,7 +230,7 @@ func (m *Model) key(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.startDelete()
 		return m, nil
 	case "r":
-		if err := m.reload(); err != nil {
+		if err := m.reload(false); err != nil {
 			m.status = "reload failed: " + err.Error()
 		}
 		return m, nil

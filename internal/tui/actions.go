@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/Torwalt/benchpress/internal/board"
+	"github.com/Torwalt/benchpress/internal/config"
 	"github.com/Torwalt/benchpress/internal/lint"
 )
 
@@ -62,18 +63,28 @@ func (m *Model) change(op func() error) {
 		m.status = err.Error()
 		return
 	}
-	if err := m.reload(); err != nil {
+	if err := m.reload(true); err != nil {
 		m.status = "change saved; reload failed: " + err.Error()
 	}
 }
 
-// reload re-reads the workbench, re-runs lint and rebuilds the list, keeping the
-// selected topic when it still exists.
-func (m *Model) reload() error {
+// reload re-reads .benchpress.toml at the board's established root, then the
+// workbench, re-runs lint and rebuilds the list, keeping the selected topic
+// when it still exists. saved reports that a change has just been written: an
+// invalid configuration is still reported, but the disk is loaded with the
+// last coherent configuration so the saved change is shown.
+func (m *Model) reload(saved bool) error {
 	if m.board == nil {
 		return nil
 	}
-	b, err := board.Load(m.board.Root, m.board.Config)
+	cfg, cfgErr := config.Load(m.board.Root)
+	if cfgErr != nil {
+		if !saved {
+			return cfgErr
+		}
+		cfg = m.board.Config
+	}
+	b, err := board.Load(m.board.Root, cfg)
 	if err != nil {
 		return err
 	}
@@ -103,6 +114,9 @@ func (m *Model) reload() error {
 	m.previewSlug = "" // force the preview to re-render the reloaded body
 	m.rebuild()
 	m.afterMove()
+	if cfgErr != nil {
+		return cfgErr
+	}
 	if findErr != nil {
 		return findErr
 	}

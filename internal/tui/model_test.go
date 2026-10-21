@@ -20,13 +20,45 @@ import (
 
 func writeTopic(t *testing.T, root, name, body string) {
 	t.Helper()
-	full := filepath.Join(root, "docs", "workbench", name)
+	writeTopicIn(t, root, "docs/workbench", name, body)
+}
+
+// writeTopicIn writes a topic file directly inside a workbench directory.
+func writeTopicIn(t *testing.T, root, dir, name, body string) {
+	t.Helper()
+	full := filepath.Join(root, filepath.FromSlash(dir), name)
 	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
 	if err := os.WriteFile(full, []byte(body), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
+}
+
+// writeConfig writes a .benchpress.toml so a reload can read it back.
+func writeConfig(t *testing.T, root, dir string, kinds, areas []string) {
+	t.Helper()
+	quote := func(values []string) string {
+		quoted := make([]string, len(values))
+		for i, v := range values {
+			quoted[i] = fmt.Sprintf("%q", v)
+		}
+		return strings.Join(quoted, ", ")
+	}
+	body := fmt.Sprintf("dir = %q\nkinds = [%s]\nareas = [%s]\n", dir, quote(kinds), quote(areas))
+	if err := os.WriteFile(filepath.Join(root, config.FileName), []byte(body), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+}
+
+// loadConfig loads a fixture's configuration from disk.
+func loadConfig(t *testing.T, root string) *config.Config {
+	t.Helper()
+	cfg, err := config.Load(root)
+	if err != nil {
+		t.Fatalf("config.Load: %v", err)
+	}
+	return cfg
 }
 
 func topicText(kind, area, state, title string) string {
@@ -67,12 +99,8 @@ func previewBoard(t *testing.T) *board.Board {
 	writeTopic(t, root, "beta.md", topicWithBody("design", "economy", "open", "Beta topic",
 		previewBody("the dawn lorikeet phrase", 1)))
 	writeTopic(t, root, "NEXT.md", "# Next\n\n1. [Alpha topic](alpha.md)\n2. [Beta topic](beta.md)\n")
-	cfg := &config.Config{
-		Dir:   "docs/workbench",
-		Kinds: []string{"bug", "change", "design", "idea"},
-		Areas: []string{"economy", "maps"},
-	}
-	b, err := board.Load(root, cfg)
+	writeConfig(t, root, "docs/workbench", []string{"bug", "change", "design", "idea"}, []string{"economy", "maps"})
+	b, err := board.Load(root, loadConfig(t, root))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -90,12 +118,8 @@ func fixtureBoard(t *testing.T) *board.Board {
 	writeTopic(t, root, "taxes.md", topicText("change", "economy", "settled", "Taxes"))
 	writeTopic(t, root, "war-table.md", topicText("design", "maps", "settled", "The war table"))
 	writeTopic(t, root, "NEXT.md", "# Next\n\n1. [Presentation on raised ground](raised-ground.md)\n")
-	cfg := &config.Config{
-		Dir:   "docs/workbench",
-		Kinds: []string{"bug", "change", "design", "idea"},
-		Areas: []string{"economy", "maps"},
-	}
-	b, err := board.Load(root, cfg)
+	writeConfig(t, root, "docs/workbench", []string{"bug", "change", "design", "idea"}, []string{"economy", "maps"})
+	b, err := board.Load(root, loadConfig(t, root))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
