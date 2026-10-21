@@ -185,6 +185,30 @@
         "reasoning": 4376,
         "cache_read": 825984
       }
+    },
+    "2.3": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T21:50:48+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "e18b259646a4459f7132d0b31b16d98c6d2c9199",
+      "commits": [
+        "8cd4fb7be8a34c1d7fd6ca8feae6193746c1f7be repo: assert every branch holding a plan is returned"
+      ],
+      "attempts": 1,
+      "handover": "# 2.3 Assert that every holding branch is returned\n\n## What landed\n\n- `repo: assert every branch holding a plan is returned` — added\n  `TestFindEveryHoldingBranch`, which puts `docs/plans/a.md` on `main`, on\n  `other` and in the worktree, then asserts `Find` returns exactly\n  `[worktree main other]`. `TestFindRunsOneLsTreePerBranch` and its command\n  counts are untouched.\n\n## Landmark drift\n\nNone. The evidence cited `internal/repo/repo_test.go:117-152`; the fixture now\nlives near `TestFindWorktreeAndBranch` (~line 97) after the unit 2.2 additions.\n\n## Deviations from the work order\n\n- Kept the new test separate from `TestFindRunsOneLsTreePerBranch` so the\n  command-count test keeps its single purpose, as the unit allowed.\n- No production change and no DESIGN change: this is a coverage-only gap over\n  already correct behaviour.\n\n## What the next session must know\n\n- Verified the test catches the named regression: temporarily breaking the\n  branch loop after the first branch that held a path produced\n  `[worktree main]` and failed the test; the temporary edit was reverted and\n  is not committed.\n- Branch order in the assertion relies on `for-each-ref` sorting refnames, so\n  `main` precedes `other`. The fixture commits `b.md` on `other` only to give\n  the branch a distinct tip; `a.md` is inherited there from `main`.\n- `scripts/verify` and `go test ./...` were green before the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9ffc6927ffeiL9o1cTKAm0yff",
+      "cost_usd": 0.008167422,
+      "harness": "opencode",
+      "elapsed_s": 39,
+      "session_s": 38,
+      "test_s": 1,
+      "tokens": {
+        "input": 27733,
+        "output": 2646,
+        "reasoning": 1452,
+        "cache_read": 516224
+      }
     }
   }
 }
