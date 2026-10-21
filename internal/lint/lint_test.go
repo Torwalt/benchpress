@@ -316,6 +316,25 @@ func TestTopicLink(t *testing.T) {
 	})
 }
 
+func TestTopicLinkWithRootDirectory(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.Dir = "."
+	problems := run(t, cfg, map[string]string{
+		"a.md": "---\nkind: bug\narea: maps\nstate: open\n---\n\n# A\n\n[gone](missing.md) and [outside](../outside.md)\n",
+	}, "# Next\n", nil)
+	if len(problems) != 2 {
+		t.Fatalf("problems = %+v, want topic-link and link", problems)
+	}
+	p := problems[0]
+	if p.Rule != "topic-link" || p.Severity != Error || p.Path != "a.md" || p.Line != 9 {
+		t.Errorf("topic-link problem = %+v", p)
+	}
+	w := problems[1]
+	if w.Rule != "link" || w.Severity != Warning || w.Path != "a.md" || w.Line != 9 {
+		t.Errorf("outside link problem = %+v", w)
+	}
+}
+
 func TestLink(t *testing.T) {
 	problems := check(t, map[string]string{
 		"a.md": "---\nkind: bug\narea: maps\nstate: open\n---\n\n# A\n\nSee [plan](../plans/gone.md).\n",

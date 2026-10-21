@@ -78,6 +78,24 @@ func TestLintTextOrdersAndExitsOne(t *testing.T) {
 	}
 }
 
+func TestLintRootDirectoryLinkExitsOne(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(root))
+	writeFile(t, root, ".benchpress.toml", "dir = \".\"\nareas = [\"maps\"]\n")
+	writeFile(t, root, "NEXT.md", "# Next\n")
+	writeFile(t, root, "a.md", "---\nkind: bug\narea: maps\nstate: open\n---\n\n# A\n\n[missing](missing.md)\n")
+
+	out, err := runRoot(t, root, "lint")
+	var code exitError
+	if !errors.As(err, &code) || int(code) != 1 {
+		t.Fatalf("err = %v, want exitError(1)\n%s", err, out)
+	}
+	if !strings.Contains(out, "a.md:9: error: link to missing topic file \"missing.md\"") {
+		t.Errorf("output = %q, want a topic-link error", out)
+	}
+}
+
 func TestLintWarningExitsZero(t *testing.T) {
 	root := warnFixture(t)
 	out, err := runRoot(t, root, "lint")

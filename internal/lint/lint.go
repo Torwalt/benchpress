@@ -164,7 +164,7 @@ func (c *checker) checkNextPresent() {
 // relative link to a missing file outside dir as the warning link.
 func (c *checker) checkLink(file string, link topic.Link) {
 	resolved := path.Clean(path.Join(c.dir, link.Target))
-	withinDir := resolved == c.dir || strings.HasPrefix(resolved, c.dir+"/")
+	withinDir := inside(c.dir, resolved)
 	switch {
 	case withinDir && strings.HasSuffix(link.Target, ".md"):
 		if !c.exists(resolved) {
@@ -186,6 +186,16 @@ func (c *checker) add(severity Severity, p string, line int, rule, message strin
 func (c *checker) exists(rel string) bool {
 	_, err := os.Stat(filepath.Join(c.board.Root, filepath.FromSlash(rel)))
 	return err == nil
+}
+
+// inside reports whether resolved is dir itself or lexically below it, after
+// path normalization, including when dir is ".".
+func inside(dir, resolved string) bool {
+	rel, err := filepath.Rel(filepath.FromSlash(dir), filepath.FromSlash(resolved))
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 func nextItemMessage(slug, target string) string {
