@@ -465,6 +465,29 @@
         "reasoning": 675,
         "cache_read": 297984
       }
+    },
+    "3.11": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:03:56+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "f06d7006438261114ea8f4a116b9787e0b42ce53",
+      "commits": [
+        "cfb04b3ee2ebca791f06aff433ed82fa1153ab3a ls: assert broken topics show their first parse issue"
+      ],
+      "attempts": 1,
+      "handover": "## What landed\n\n- `cfb04b3` — `ls: assert broken topics show their first parse issue`. `TestLS`\n  now finds the fixture's `bad` row and asserts it contains\n  `file does not start with ---`, in addition to the existing slug check.\n\n## Landmark drift\n\nNone. `entryLine`'s broken branch is at `cmd/benchpress/ls.go:100-103`; the\ncommand fixture and `TestLS` are in `cmd/benchpress/ls_test.go`.\n\n## Deviations from the work order\n\nNone. Coverage-only: production code is unchanged. To find the row, the test\nmatches its first whitespace-separated field against `bad` rather than a fixed\n`\"  bad  \"` prefix, so it still identifies the row when the issue text is\nremoved.\n\n## What the next session must know\n\n- Temporarily reducing `entryLine`'s broken branch to `\"  \" + e.Slug` made the\n  new assertion fail (`broken topic line = \"  bad\"`); `ls.go` was restored and\n  `scripts/verify` and `go test ./...` were green before the commit.\n- No documentation change was needed; DESIGN §7 already promises the first\n  parse error in the text.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9ff0557bffecEWWc50NHxca1m",
+      "cost_usd": 0.007004664,
+      "harness": "opencode",
+      "elapsed_s": 36,
+      "session_s": 35,
+      "tokens": {
+        "input": 24492,
+        "output": 2159,
+        "reasoning": 1139,
+        "cache_read": 450688
+      }
     }
   }
 }
