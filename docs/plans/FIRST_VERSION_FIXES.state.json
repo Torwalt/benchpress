@@ -557,6 +557,29 @@
         "reasoning": 1040,
         "cache_read": 371072
       }
+    },
+    "4.4": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:10:09+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "62ba382c16ebb76ab9e974c96c9250d055939d71",
+      "commits": [
+        "a8953ff85ebd9e9c58b794c25ebaad252affd2d8 board: roll back failed multi-file edits"
+      ],
+      "attempts": 1,
+      "handover": "# 4.4 handover\n\n## What landed\n\n- `a8953ff` — `board: roll back failed multi-file edits`.\n  - `New(..., true)` removes the topic it just created when appending to Next\n    fails.\n  - `Remove` snapshots the topic and NEXT.md, then on a failed Next write\n    restores both files' presence, bytes and modes and the in-memory Next.\n  - `addNextItem` snapshots NEXT.md and the in-memory Next, restoring both on a\n    failed write; `NextAdd` inherits the same guarantee.\n  - Added `TestNewNextWriteFailureRollsBack` and\n    `TestRemoveNextWriteFailureRollsBack`; both inject the second-step failure,\n    assert full before/after file snapshots (including absent original NEXT.md\n    and a `0o600` topic mode), then retry successfully on the same Board.\n\n## Landmark drift\n\nNone. `New`, `Remove`, `addNextItem` and `writeNext` were where cited; only\nline numbers moved.\n\n## Deviations from the work order\n\n- The failure seam is an unexported `Board.writeNextFile` field rather than a\n  package-global, so tests inject the failure without a shared mutable.\n- `addNextItem` owns the NEXT.md/in-memory rollback and `New` owns the topic\n  removal, which also gives `NextAdd` rollback without changing its contract.\n- No DESIGN change: §9 already states a failed operation changes nothing, and\n  the unit changes no format, command, key, lint rule or package boundary.\n\n## What the next session must know\n\n- `Remove` still takes the single-file path when the topic is not in Next; that\n  path has only one step and no rollback.\n- Rollback restores through `writeAtomic` plus `os.Chmod`, so temporary files\n  stay in the workbench directory and are cleaned by `writeAtomic`.\n- A rollback failure is joined with the original error via `errors.Join`.\n\n## Open problems\n\nNone. `scripts/verify` and `go test ./...` are green at `a8953ff`.",
+      "session_id": "ses_e9fecfbd7ffeLAWj5vaMAfI0Hd",
+      "cost_usd": 0.025383942,
+      "harness": "opencode",
+      "elapsed_s": 189,
+      "session_s": 188,
+      "tokens": {
+        "input": 55937,
+        "output": 5588,
+        "reasoning": 15494,
+        "cache_read": 1448064
+      }
     }
   }
 }
