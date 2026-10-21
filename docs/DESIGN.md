@@ -104,7 +104,9 @@ heading with no text is not a title.
 `[Drafts strand](drafts-strand.md)`, optionally with a `#fragment`. Links with a
 scheme (`https:`), absolute paths and bare fragments are not checked. Image
 tokens, `![alt](target)`, are not links and are not checked, in a topic body or
-in Next item text; an ordinary link beside an image is still checked.
+in Next item text; an ordinary link beside an image is still checked. In a
+label, a backslash escapes the next character — `\\`, `\[` and `\]` — and the
+label ends at the first unescaped `]`, so escaped brackets do not close it.
 
 **Editing.** When benchpress changes a topic it changes only the front-matter
 lines it must — replacing a key's line in place, appending a new key just before
@@ -126,7 +128,8 @@ The only place order lives.
 
 - An **item** is a list line: `N. ` or `- ` at the start of the line. Each item
   begins with a link to a topic in `dir`, and may continue with free text after
-  the link. The target is a relative path that normalizes to a Markdown file
+  the link. Its label uses the escapes of §3. The target is a relative path that
+  normalizes to a Markdown file
   directly in `dir`: `./a.md` names `a.md`, while `a`, `sub/a.md` and
   `../outside/a.md` do not. Lines that are not items — the heading, prose, blank
   lines — are kept as they are and not checked.

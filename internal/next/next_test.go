@@ -61,6 +61,24 @@ func TestParseLinkForms(t *testing.T) {
 	}
 }
 
+func TestLinkEscapedLabels(t *testing.T) {
+	src := "# Next\n\n" +
+		"1. [escaped close \\] label](close.md)\n" +
+		"2. [escaped open \\[ label](open.md)\n" +
+		"3. [doubled \\\\ label](doubled.md)\n" +
+		"4. [see \\[inner\\](inner.md)](outer.md)\n"
+	n := Parse([]byte(src))
+	want := []string{"close.md", "open.md", "doubled.md", "outer.md"}
+	if len(n.Items) != len(want) {
+		t.Fatalf("Items = %v, want %d", n.Items, len(want))
+	}
+	for i, target := range want {
+		if n.Items[i].Target != target {
+			t.Errorf("Items[%d].Target = %q, want %q", i, n.Items[i].Target, target)
+		}
+	}
+}
+
 func TestRenderNumbersBullets(t *testing.T) {
 	src := "# Next\n\n- [a](a.md)\n2. [b](b.md)\n- [c](c.md)\n"
 	got := Parse([]byte(src)).Render()

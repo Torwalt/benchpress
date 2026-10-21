@@ -203,6 +203,33 @@ func TestParseLinkTargets(t *testing.T) {
 	}
 }
 
+func TestLinkEscapedLabels(t *testing.T) {
+	src := "---\nkind: bug\narea: maps\nstate: open\n---\n\n" +
+		"# Escaped labels\n\n" +
+		"[escaped close \\] label](close.md)\n" +
+		"[escaped open \\[ label](open.md)\n" +
+		"[doubled \\\\ label](doubled.md)\n" +
+		"[see \\[inner\\](inner.md)](outer.md)\n"
+	got, issues := Parse([]byte(src))
+	if len(issues) != 0 {
+		t.Fatalf("issues = %v, want none", issues)
+	}
+	want := []Link{
+		{Target: "close.md", Line: 9},
+		{Target: "open.md", Line: 10},
+		{Target: "doubled.md", Line: 11},
+		{Target: "outer.md", Line: 12},
+	}
+	if len(got.Links) != len(want) {
+		t.Fatalf("Links = %v, want %v", got.Links, want)
+	}
+	for i, l := range want {
+		if got.Links[i] != l {
+			t.Errorf("Links[%d] = %v, want %v", i, got.Links[i], l)
+		}
+	}
+}
+
 func TestImagesAreNotLinks(t *testing.T) {
 	src := "---\nkind: bug\narea: maps\nstate: open\n---\n\n" +
 		"# Images\n\n" +

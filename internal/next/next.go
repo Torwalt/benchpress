@@ -182,11 +182,13 @@ func leadingTarget(text string) string {
 	if !strings.HasPrefix(text, "[") {
 		return ""
 	}
-	closeText := strings.IndexByte(text[1:], ']')
-	if closeText < 0 {
+	j := 1
+	for j < len(text) && (text[j] != ']' || escaped(text, j)) {
+		j++
+	}
+	if j >= len(text) {
 		return ""
 	}
-	j := 1 + closeText
 	if j+1 >= len(text) || text[j+1] != '(' {
 		return ""
 	}
@@ -195,6 +197,15 @@ func leadingTarget(text string) string {
 		return ""
 	}
 	return cleanTarget(text[j+2 : j+2+closeTarget])
+}
+
+// escaped reports whether the byte at i follows an odd run of backslashes.
+func escaped(s string, i int) bool {
+	n := 0
+	for j := i - 1; j >= 0 && s[j] == '\\'; j-- {
+		n++
+	}
+	return n%2 == 1
 }
 
 // cleanTarget reads the target out of a link's parentheses: no title, no

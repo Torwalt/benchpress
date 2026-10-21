@@ -476,11 +476,13 @@ func skipCodeSpan(line string, i int) int {
 // parseLink reads an inline link [text](target "title") at i, returning the
 // raw target and the index just past the closing parenthesis.
 func parseLink(line string, i int) (target string, end int, ok bool) {
-	closeText := strings.IndexByte(line[i+1:], ']')
-	if closeText < 0 {
+	j := i + 1
+	for j < len(line) && (line[j] != ']' || escaped(line, j)) {
+		j++
+	}
+	if j >= len(line) {
 		return "", 0, false
 	}
-	j := i + 1 + closeText
 	if j+1 >= len(line) || line[j+1] != '(' {
 		return "", 0, false
 	}
