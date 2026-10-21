@@ -207,6 +207,15 @@ func TestLS(t *testing.T) {
 			t.Errorf("output missing %q:\n%s", want, out)
 		}
 	}
+	badLine := ""
+	for _, line := range strings.Split(out, "\n") {
+		if fields := strings.Fields(line); len(fields) > 0 && fields[0] == "bad" {
+			badLine = line
+		}
+	}
+	if !strings.Contains(badLine, "file does not start with ---") {
+		t.Errorf("broken topic line = %q, want its first parse issue:\n%s", badLine, out)
+	}
 	positions := []int{
 		strings.Index(out, "Next"),
 		strings.Index(out, "raised-ground"),
