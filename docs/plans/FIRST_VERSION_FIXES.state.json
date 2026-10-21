@@ -281,6 +281,29 @@
         "reasoning": 4648,
         "cache_read": 702464
       }
+    },
+    "3.3": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T21:57:12+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "5fb74cfeef01863aa8410ad9f9ff1b55b40ac9b9",
+      "commits": [
+        "7307b2af239a883dc5d491901f9dd7fbf53f4376 lint: take file existence from its caller"
+      ],
+      "attempts": 1,
+      "handover": "# 3.3 Supply lint's existence query and test its rules entirely in memory\n\n## What landed\n\n- `lint: take file existence from its caller` (`7307b2a`).\n- `board.Board.Exists(rel)` owns the working-tree stat, still treating stat\n  errors as absence.\n- `lint.Check` takes `exists func(string) bool` beside the plan locator;\n  `cmd/benchpress` (`lint`, board startup) and the TUI reload pass `b.Exists`.\n- Lint tests build boards from `topic.Parse`/`next.Parse` bytes and an in-memory\n  path set; `TestCheckUsesSuppliedExistence` shows a present link stays clean\n  and a missing one reports `topic-link` with no filesystem involved.\n- DESIGN §10 records the injected existence query and the TUI's retained\n  `repo.Locator` dependency.\n\n## Landmark drift\n\nThe lint `checker.exists` method was where the evidence said; it is gone.\nContainment moved from `filepath.Rel` to slash-path string comparison in\n`inside`, since `path/filepath` is no longer imported by `lint`. The behaviour\nfor `dir = \".\"` and nested dirs is unchanged.\n\n## Deviations from the work order\n\nNone of substance. To satisfy the no-`path/filepath` condition, `inside` now\nnormalizes with the `path` package (both inputs are already slash-separated\nrepository paths) rather than `filepath`.\n\n## What the next session must know\n\n- `Check`'s signature is now `Check(ctx, b, exists, loc)`. Any new caller must\n  supply a repository-relative existence query; `b.Exists` is the board one.\n- `TestNextTargetsMustNameTopicFiles` now marks \"present\" targets in the\n  in-memory set instead of creating them on disk.\n- `rg '\"os\"|\"path/filepath\"|t.TempDir|board.Load' internal/lint` is empty.\n- `scripts/verify` and `go test ./...` were green after the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9ff76677ffew5olnULhUHw4Ch",
+      "cost_usd": 0.019433549999999997,
+      "harness": "opencode",
+      "elapsed_s": 96,
+      "session_s": 95,
+      "tokens": {
+        "input": 69557,
+        "output": 6118,
+        "reasoning": 4850,
+        "cache_read": 806400
+      }
     }
   }
 }
