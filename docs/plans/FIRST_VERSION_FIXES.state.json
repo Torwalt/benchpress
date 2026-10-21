@@ -720,6 +720,29 @@
         "reasoning": 1932,
         "cache_read": 622208
       }
+    },
+    "5.2": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:17:55+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "2f115f5819ee528744db188a654e2d655d5a3927",
+      "commits": [
+        "2831b9a820c1ef18e1383ce365043a6d81eb8cd9 tui: quit from every mode and delete a whole filter rune"
+      ],
+      "attempts": 1,
+      "handover": "# 5.2 handover\n\n## What landed\n\n- `2831b9a` — `tui: quit from every mode and delete a whole filter rune`.\n  `Model.key` now asks a new `Model.quits` predicate before any modal dispatch:\n  Ctrl+C always quits; `q` quits except while the filter is active or a prompt\n  is open, so it still quits from help and delete confirmation but is text in\n  the filter and title/kind/area/plan inputs. `filterKey` backspace uses\n  `utf8.DecodeLastRuneInString`, so a multi-byte rune is removed whole.\n- Added `TestQuitFromEveryMode` (Ctrl+C in normal, help, filter, all four\n  prompts and delete confirmation, checking `tea.QuitMsg` and unchanged\n  workbench files), `TestQQuitsFromHelpAndConfirmation`,\n  `TestQIsTextInFilterAndPrompts` and `TestFilterBackspaceRune`. All failed\n  against the old code before the fix.\n\n## Landmark drift\n\nNone. `Model.key`, `filterKey`, `promptKey` and `confirmKey` are where the plan\nplaced them in `internal/tui/model.go` and `actions.go`.\n\n## Deviations from the work order\n\nNone. Quit dispatch is centralized in `Model.key`/`quits`; `promptKey` and\n`confirmKey` were left otherwise unchanged because the earlier dispatch now\nhandles the quit keys.\n\n## What the next session must know\n\n- `q` is dispatched by `quits`, not by the help/confirm handlers themselves.\n  The predicate deliberately keys only on `prompt != promptNone` and\n  `filtering`; help and confirmation fall through to quitting.\n- `?`/Escape still close help and Escape still cancels prompts.\n- No DESIGN change: §9 already documents `q`/`ctrl+c` as quit and the keys table\n  now matches the implementation.\n- `scripts/verify`, `go test ./...` and the focused TUI tests are green at\n  `2831b9a`. No dependency or flake change.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_e9fe43872ffexUxX8bE5CyEtT6",
+      "cost_usd": 0.012857406,
+      "harness": "opencode",
+      "elapsed_s": 81,
+      "session_s": 80,
+      "tokens": {
+        "input": 36329,
+        "output": 4426,
+        "reasoning": 5435,
+        "cache_read": 497152
+      }
     }
   }
 }
