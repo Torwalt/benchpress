@@ -143,10 +143,11 @@ lives only on its branch, in a worktree, until the branch lands; that is not a
 problem, only a fact the board shows (`on raised-ground`).
 
 benchpress asks git once per local branch, never once per topic and branch:
-one `git for-each-ref --format=%(refname:short) refs/heads` and then, per
-branch, one `git ls-tree -r --name-only <branch> -- <path>…` over every plan
-path in question. Outside a git repository only the working tree is consulted,
-without an error.
+one `git for-each-ref --format=%(refname) refs/heads` and then, per branch, one
+`git ls-tree -r -z --name-only <ref> -- <path>…` over every plan path in
+question. It keeps full `refs/heads/…` refs internally and strips that prefix
+only to report a branch's name; `-z` keeps unusual path bytes literal. Outside
+a git repository only the working tree is consulted, without an error.
 
 ## 6. Lint
 

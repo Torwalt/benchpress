@@ -74,11 +74,12 @@ func (r *Repo) Find(ctx context.Context, paths ...string) (map[string][]string, 
 	if err != nil {
 		return found, nil
 	}
-	for _, branch := range branches {
-		held, err := r.branchHolds(ctx, branch, unique)
+	for _, ref := range branches {
+		held, err := r.branchHolds(ctx, ref, unique)
 		if err != nil {
 			return nil, err
 		}
+		branch := strings.TrimPrefix(ref, "refs/heads/")
 		for _, p := range unique {
 			if held[p] {
 				found[p] = append(found[p], branch)
@@ -94,27 +95,32 @@ func (r *Repo) inWorktree(path string) bool {
 	return err == nil
 }
 
-// branches lists the local branches, or an error outside a repository.
+// branches lists the local branches as full refs, or an error outside a
+// repository. Full refs keep ls-tree unambiguous when a tag shares a branch's
+// name; Find strips the prefix only for display.
 func (r *Repo) branches(ctx context.Context) ([]string, error) {
-	out, err := r.run(ctx, "for-each-ref", "--format=%(refname:short)", "refs/heads")
+	out, err := r.run(ctx, "for-each-ref", "--format=%(refname)", "refs/heads")
 	if err != nil {
 		return nil, err
 	}
 	return nonEmptyLines(out), nil
 }
 
-// branchHolds returns the subset of paths present in branch's tree.
-func (r *Repo) branchHolds(ctx context.Context, branch string, paths []string) (map[string]bool, error) {
-	args := make([]string, 0, 5+len(paths))
-	args = append(args, "ls-tree", "-r", "--name-only", branch, "--")
+// branchHolds returns the subset of paths present in ref's tree. The -z output
+// is literal, with no C quoting of unusual bytes.
+func (r *Repo) branchHolds(ctx context.Context, ref string, paths []string) (map[string]bool, error) {
+	args := make([]string, 0, 6+len(paths))
+	args = append(args, "ls-tree", "-r", "-z", "--name-only", ref, "--")
 	args = append(args, paths...)
 	out, err := r.run(ctx, args...)
 	if err != nil {
 		return nil, err
 	}
 	held := make(map[string]bool)
-	for _, line := range nonEmptyLines(out) {
-		held[line] = true
+	for _, line := range strings.Split(string(out), "\x00") {
+		if line != "" {
+			held[line] = true
+		}
 	}
 	return held, nil
 }

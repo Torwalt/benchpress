@@ -114,6 +114,38 @@ func TestFindOutsideRepository(t *testing.T) {
 	}
 }
 
+func TestFindNonASCIIPlanOnBranch(t *testing.T) {
+	dir := gitRepo(t)
+	writeFile(t, dir, "README.md", "seed")
+	commit(t, dir, "seed")
+	runGit(t, dir, "checkout", "-q", "-b", "other")
+	writeFile(t, dir, "docs/plans/café.md", "x")
+	commit(t, dir, "plan on other")
+	runGit(t, dir, "checkout", "-q", "main")
+
+	got := find(t, New(dir), "docs/plans/café.md")
+	if want := []string{"other"}; !reflect.DeepEqual(got["docs/plans/café.md"], want) {
+		t.Errorf("locations = %v, want %v", got["docs/plans/café.md"], want)
+	}
+}
+
+func TestFindBranchNameWithTagCollision(t *testing.T) {
+	dir := gitRepo(t)
+	writeFile(t, dir, "README.md", "seed")
+	commit(t, dir, "seed")
+	runGit(t, dir, "checkout", "-q", "-b", "foo")
+	writeFile(t, dir, "docs/plans/colliding.md", "x")
+	commit(t, dir, "plan on foo")
+	runGit(t, dir, "checkout", "-q", "main")
+	runGit(t, dir, "branch", "heads/foo")
+	runGit(t, dir, "tag", "foo")
+
+	got := find(t, New(dir), "docs/plans/colliding.md")
+	if want := []string{"foo"}; !reflect.DeepEqual(got["docs/plans/colliding.md"], want) {
+		t.Errorf("locations = %v, want %v", got["docs/plans/colliding.md"], want)
+	}
+}
+
 func TestFindRunsOneLsTreePerBranch(t *testing.T) {
 	dir := gitRepo(t)
 	writeFile(t, dir, "docs/plans/a.md", "x")
