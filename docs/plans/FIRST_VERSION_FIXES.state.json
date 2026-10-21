@@ -743,6 +743,29 @@
         "reasoning": 5435,
         "cache_read": 497152
       }
+    },
+    "5.3": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T22:18:48+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "308c8b9901c1447b09af837db94481a4191b67c0",
+      "commits": [
+        "3c601988c8d246674bac0339b44ffb72aa088d46 tui: name the Next section above its items"
+      ],
+      "attempts": 1,
+      "handover": "# 5.3 handover\n\n## What landed\n\n- `3c60198` — `tui: name the Next section above its items`. `Model.rebuild`\n  now appends a `rowGroup` labelled `Next` before the Next items whenever the\n  visible Next section is nonempty. The heading reuses the existing\n  nonselectable group-header path, so `move`, `firstRow`, `lastRow`,\n  `restoreCursor` and `selectedEntry` already skip it. Numbers come from the\n  item's position in `nextSlugs`, so the heading does not shift them.\n- `TestViewNamesNextSection` covers heading-before-first-item in rows and in\n  `View`, numbers 1 and 2, initial selection on the first topic, `k`/`g`\n  remaining on a topic, and a filter (`war`) with no Next match removing both\n  the heading row and its rendered label. It failed before the fix.\n\n## Landmark drift\n\n- The plan's evidence lines shifted forward slightly from earlier TUI commits.\n  `rebuild` is now `internal/tui/model.go:321`; `rowView` is\n  `internal/tui/view.go:61`. Names and roles are unchanged.\n\n## Deviations from the work order\n\n- None. The heading uses `rowGroup` with a new `nextGroupLabel = \"Next\"`\n  constant. `groupLabels` in `model_test.go` excludes that label so the tab\n  grouping assertions still test only the non-Next groups; the new test asserts\n  the heading explicitly.\n- No DESIGN change: §9 already specifies a *Next* section before the named\n  groups, and this unit adds no key, format, lint rule or package boundary.\n\n## What the next session must know\n\n- `Next` is now row index 0 whenever the section is visible, so any later test\n  that indexes `rows` directly must account for it. Existing model tests use\n  helpers and selection, not fixed offsets, and were unaffected.\n- `rowView` still left-pads non-group, non-selected rows with two spaces; the\n  heading is rendered with `groupStyle` and no indent, like every group name.\n- `scripts/verify` and `go test ./...` are green at `3c60198`. No dependency or\n  flake change.\n\n## Open problems\n\n- None.",
+      "session_id": "ses_e9fe2fbaeffekbbSQadht53GZM",
+      "cost_usd": 0.01064478,
+      "harness": "opencode",
+      "elapsed_s": 53,
+      "session_s": 52,
+      "tokens": {
+        "input": 35446,
+        "output": 2967,
+        "reasoning": 3244,
+        "cache_read": 533760
+      }
     }
   }
 }
