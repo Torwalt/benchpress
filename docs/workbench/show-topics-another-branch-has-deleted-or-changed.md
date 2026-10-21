@@ -10,12 +10,12 @@ state: open
 narrower than it could be: an unlanded branch's deletions and edits to topics do
 not show.
 
-**Now:** `internal/board/board.go` lists every `*.md` in the configured `dir` as
-read from disk, and `internal/repo/repo.go` answers only which local branches
-hold a *plan path* (`refs/heads/*`, one `ls-tree` per branch). Neither consults a
-branch's tree for the topic files themselves, so a topic deleted on a branch that
-has not landed looks present here, and a topic it changed shows the working
-tree's body.
+**Now:** `internal/board/board.go` lists every topic file — every `*.md` directly
+in the configured `dir`, excluding `README.md` and `NEXT.md` — as read from disk,
+and `internal/repo/repo.go` answers only which local branches hold a *plan path*
+(`refs/heads/*`, one `ls-tree` per branch). Neither consults a branch's tree for
+the topic files themselves, so a topic deleted on a branch that has not landed
+looks present here, and a topic it changed shows the working tree's body.
 
 **Open:**
 
