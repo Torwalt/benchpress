@@ -68,6 +68,29 @@
         "reasoning": 4196,
         "cache_read": 736256
       }
+    },
+    "1.4": {
+      "status": "landed",
+      "outcome": "done",
+      "date": "2026-10-21T21:45:47+02:00",
+      "agent": "opencode opencode-go/deepseek-v4.1-flash high",
+      "base": "cf518142b774bc154bae38b57e4270959a42c004",
+      "commits": [
+        "91d8d182847280a772f20c308227aab8d6d17879 topic: exclude image tokens from link collection"
+      ],
+      "attempts": 1,
+      "handover": "# 1.4 Exclude image tokens from collected links\n\n## What landed\n\n- `topic: exclude image tokens from link collection` — `collectLinks` now\n  recognizes an unescaped `![` and skips the entire image token, alt text and\n  target included. `TestImagesAreNotLinks` covers `Parse` and `LineLinks` with\n  an `.png` image, a `.md` image target, an image whose alt text contains a\n  link, an adjacent real link, and an escaped `\\!` before a real link.\n\n## Landmark drift\n\nNone. `collectLinks`, `parseLink` and `LineLinks` are still in\n`internal/topic/topic.go`; `collectLinks` was at 374-392 and is now at 374-402.\n`Parse` still calls it for body lines and lint still calls `LineLinks` for Next\nitems (`internal/lint/lint.go:149`).\n\n## Deviations from the work order\n\n- Added small `imageEnd`, `closing` and `escaped` helpers rather than extending\n  `parseLink`: `parseLink` stops at the first `]`, so an image with a link in\n  its alt text needs bracket matching to be skipped whole. `closing` tracks\n  nesting and backslash escapes; `parseLink` itself is unchanged.\n- The DESIGN sentence in §3 also names Next item text, since the same collector\n  governs both, while placing the statement in §3 as D1 asks.\n\n## What the next session must know\n\n- An escaped `\\![text](target)` is not an image, so its link is collected.\n- An image token whose bracket or target parenthesis is unclosed is not skipped;\n  ordinary link collection then continues from its `[`. No test pins this\n  malformed-input case.\n- `escaped` counts the run of backslashes immediately before the byte, so even\n  runs leave a following `!` unescaped.\n- `scripts/verify` and `go test ./...` were green before the commit.\n\n## Open problems\n\nNone.",
+      "session_id": "ses_ea00139f2ffeUJHp19Q3p9mUci",
+      "cost_usd": 0.009455933999999997,
+      "harness": "opencode",
+      "elapsed_s": 54,
+      "session_s": 53,
+      "tokens": {
+        "input": 26357,
+        "output": 3044,
+        "reasoning": 3534,
+        "cache_read": 518528
+      }
     }
   }
 }
