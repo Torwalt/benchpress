@@ -137,6 +137,62 @@ func TestFindRootNested(t *testing.T) {
 	}
 }
 
+func TestFindRootSkipsConfigDirectory(t *testing.T) {
+	t.Run("file above", func(t *testing.T) {
+		root := t.TempDir()
+		writeConfig(t, root, "")
+
+		nested := filepath.Join(root, "a", "b")
+		if err := os.MkdirAll(filepath.Join(nested, FileName), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+
+		got, err := FindRoot(nested)
+		if err != nil {
+			t.Fatalf("FindRoot: %v", err)
+		}
+		if got != root {
+			t.Errorf("FindRoot = %q, want %q", got, root)
+		}
+	})
+
+	t.Run("none above", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(dir, FileName), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+
+		_, err := FindRoot(dir)
+		if !errors.Is(err, ErrNoRoot) {
+			t.Fatalf("FindRoot error = %v, want ErrNoRoot", err)
+		}
+	})
+}
+
+func TestFindRootFollowsConfigSymlink(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "real.toml")
+	if err := os.WriteFile(target, nil, 0o644); err != nil {
+		t.Fatalf("write target: %v", err)
+	}
+	if err := os.Symlink(target, filepath.Join(root, FileName)); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+
+	nested := filepath.Join(root, "a")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	got, err := FindRoot(nested)
+	if err != nil {
+		t.Fatalf("FindRoot: %v", err)
+	}
+	if got != root {
+		t.Errorf("FindRoot = %q, want %q", got, root)
+	}
+}
+
 func TestFindRootNone(t *testing.T) {
 	dir := t.TempDir()
 	nested := filepath.Join(dir, "a")

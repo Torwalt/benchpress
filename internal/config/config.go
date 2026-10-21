@@ -66,7 +66,8 @@ func FindRoot(start string) (string, error) {
 		return "", err
 	}
 	for {
-		if _, err := os.Stat(filepath.Join(dir, FileName)); err == nil {
+		// Stat follows symlinks, so a link to a regular file counts too.
+		if info, err := os.Stat(filepath.Join(dir, FileName)); err == nil && info.Mode().IsRegular() {
 			return dir, nil
 		}
 		parent := filepath.Dir(dir)
