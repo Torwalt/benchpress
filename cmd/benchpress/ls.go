@@ -76,23 +76,28 @@ func findPlans(cmd *cobra.Command, b *board.Board) (map[string][]string, error) 
 }
 
 func writeText(w io.Writer, nextSlugs []string, entries []board.Entry) {
-	n := len(nextSlugs)
-	if n > 0 {
-		fmt.Fprintln(w, "Next")
-		for _, e := range entries[:n] {
-			fmt.Fprintln(w, entryLine(e))
-		}
+	inNext := make(map[string]bool, len(nextSlugs))
+	for _, slug := range nextSlugs {
+		inNext[slug] = true
 	}
-	area := ""
-	for i, e := range entries[n:] {
-		if i == 0 || e.Area != area {
-			area = e.Area
-			if n > 0 || i > 0 {
+	group, first := "", true
+	for _, e := range entries {
+		if e.Under != "" {
+			fmt.Fprintln(w, "  "+entryLine(e))
+			continue
+		}
+		key, label := "area "+e.Area, e.Area
+		if inNext[e.Slug] {
+			key, label = "next", "Next"
+		}
+		if first || key != group {
+			if !first {
 				fmt.Fprintln(w)
 			}
-			if area != "" {
-				fmt.Fprintln(w, area)
+			if label != "" {
+				fmt.Fprintln(w, label)
 			}
+			group, first = key, false
 		}
 		fmt.Fprintln(w, entryLine(e))
 	}
@@ -122,6 +127,7 @@ type jsonTopic struct {
 	Area      string   `json:"area"`
 	State     string   `json:"state"`
 	Plan      string   `json:"plan"`
+	Epic      string   `json:"epic"`
 	PlanFound []string `json:"plan_found"`
 }
 
@@ -145,6 +151,7 @@ func writeJSON(w io.Writer, nextSlugs []string, entries []board.Entry) error {
 			Area:      e.Area,
 			State:     e.State,
 			Plan:      e.Plan,
+			Epic:      e.Epic,
 			PlanFound: found,
 		})
 	}

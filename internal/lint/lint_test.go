@@ -389,3 +389,32 @@ func TestClean(t *testing.T) {
 		t.Fatalf("problems = %+v, want none", problems)
 	}
 }
+
+func TestEpic(t *testing.T) {
+	epicBody := func(epic, title string) string {
+		return "---\nkind: bug\narea: maps\nstate: open\nepic: " + epic + "\n---\n\n# " + title + "\n"
+	}
+	if problems := check(t, map[string]string{
+		"summoner.md": topicBody("design", "maps", "open", "The Summoner"),
+		"juice.md":    epicBody("summoner", "Juice"),
+	}, "# Next\n"); len(problems) != 0 {
+		t.Errorf("valid epic: problems = %+v", problems)
+	}
+	cases := map[string]map[string]string{
+		"names no topic": {"juice.md": epicBody("summoner", "Juice")},
+		"names itself":   {"juice.md": epicBody("juice", "Juice")},
+		"nested": {
+			"summoner.md": topicBody("design", "maps", "open", "The Summoner"),
+			"juice.md":    epicBody("summoner", "Juice"),
+			"hits.md":     epicBody("juice", "Hits"),
+		},
+	}
+	for name, topics := range cases {
+		t.Run(name, func(t *testing.T) {
+			p := requireOnly(t, check(t, topics, "# Next\n"), "epic", Error)
+			if p.Line != 5 {
+				t.Errorf("line = %d, want 5", p.Line)
+			}
+		})
+	}
+}

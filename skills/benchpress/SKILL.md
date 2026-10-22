@@ -40,7 +40,8 @@ dated, in the author's words where they matter.
   and hyphens. Create one with `benchpress new "<title>" --kind K --area A`, or
   write the file by hand.
 - **Front matter** is exactly `key: value` lines: `kind` and `area` from the
-  configured lists, `state`, and `plan` only for a planned topic. Nothing else.
+  configured lists, `state`, `plan` only for a planned topic, and `epic` only
+  for a sub-topic (see *Epics*). Nothing else.
 - **The title** is the one `# ` heading, first after the front matter.
 - **Date what was said and what was measured.** A topic outlives the build it
   describes; a date tells the next reader how stale a line may be.
@@ -51,6 +52,22 @@ dated, in the author's words where they matter.
   `[Drafts strand](drafts-strand.md)`.
 - **Bugs need fixing, not discussing.** A bug topic says what was seen, the
   evidence, and what is known of the cause; label guesses as guesses.
+
+## Epics
+
+A subject too big for one topic — a whole feature with design, art, tooling
+and tuning questions of its own — becomes an **epic**: an ordinary topic that
+holds the overview and the questions that span it, with one sub-topic per
+part. A sub-topic names it in its front matter, `epic: <slug>`, and keeps its
+own kind, area and state. Create one with `benchpress new "<title>" --kind K
+--area A --epic <slug>`.
+
+- Epics are one level deep. A sub-topic cannot have sub-topics of its own.
+- The epic links each sub-topic and says how they relate; each question still
+  lives in one place, the epic or one sub-topic.
+- A sub-topic is planned, settled and deleted like any topic. Delete the epic
+  when its last sub-topic is gone, or sooner if what is left of it no longer
+  hangs together.
 
 ## States
 

@@ -272,7 +272,7 @@ func (m *Model) submitPrompt() tea.Cmd {
 		title, kind := m.newTitle, m.newKind
 		m.resetPrompt()
 		m.change(func() error {
-			_, err := m.board.New(title, kind, area, false)
+			_, err := m.board.New(title, kind, area, "", false)
 			return err
 		})
 	}

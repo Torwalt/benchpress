@@ -331,6 +331,17 @@ func (m *Model) rebuild() {
 	for _, e := range entries {
 		bySlug[e.Slug] = e
 	}
+	subs := make(map[string][]board.Entry)
+	for i, e := range entries {
+		if e.Under == "" {
+			continue
+		}
+		if _, ok := bySlug[e.Under]; !ok {
+			entries[i].Under = ""
+			continue
+		}
+		subs[e.Under] = append(subs[e.Under], e)
+	}
 	inNext := make(map[string]bool, len(nextSlugs))
 	for _, s := range nextSlugs {
 		inNext[s] = true
@@ -340,10 +351,13 @@ func (m *Model) rebuild() {
 	}
 	for i, s := range nextSlugs {
 		m.rows = append(m.rows, row{kind: rowNext, entry: bySlug[s], number: i + 1})
+		for _, e := range subs[s] {
+			m.rows = append(m.rows, row{kind: rowTopic, entry: e})
+		}
 	}
 	var rest []board.Entry
 	for _, e := range entries {
-		if !inNext[e.Slug] {
+		if !inNext[e.Slug] && !inNext[e.Under] {
 			rest = append(rest, e)
 		}
 	}
@@ -382,13 +396,19 @@ func entryMatches(e board.Entry, q string) bool {
 }
 
 // groupEntries splits the non-Next topics into groups for the current grouping,
-// ordered as the configuration orders them (states by their fixed order).
+// ordered as the configuration orders them (states by their fixed order). A
+// sub-topic stays in its epic's group, after the epic.
 func (m *Model) groupEntries(entries []board.Entry) []group {
 	order := m.groupOrder()
 	index := make(map[string]int)
+	groupOf := make(map[string]string)
 	var groups []group
 	for _, e := range entries {
 		name := m.groupKey(e)
+		if epicGroup, ok := groupOf[e.Under]; ok && e.Under != "" {
+			name = epicGroup
+		}
+		groupOf[e.Slug] = name
 		i, ok := index[name]
 		if !ok {
 			i = len(groups)

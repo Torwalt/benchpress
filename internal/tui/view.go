@@ -67,7 +67,11 @@ func (m *Model) rowView(i int) string {
 	case rowNext:
 		text = m.topicText(r.entry, fmt.Sprintf("%d. ", r.number))
 	default:
-		text = m.topicText(r.entry, "")
+		prefix := ""
+		if r.entry.Under != "" {
+			prefix = "  "
+		}
+		text = m.topicText(r.entry, prefix)
 	}
 	width := m.width
 	if !m.narrow {

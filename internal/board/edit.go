@@ -19,7 +19,7 @@ import (
 // open, and returns its repository-relative path. It fails when the file
 // exists, when kind or area is not allowed, or when the title makes no slug.
 // When toNext, the new topic is appended to Next.
-func (b *Board) New(title, kind, area string, toNext bool) (string, error) {
+func (b *Board) New(title, kind, area, epic string, toNext bool) (string, error) {
 	if !inList(b.Config.Kinds, kind) {
 		return "", fmt.Errorf("kind %q is not allowed", kind)
 	}
@@ -29,6 +29,11 @@ func (b *Board) New(title, kind, area string, toNext bool) (string, error) {
 	slug := topic.Slugify(title)
 	if slug == "" {
 		return "", fmt.Errorf("title %q makes no slug", title)
+	}
+	if epic != "" {
+		if err := b.epicAllowed(epic); err != nil {
+			return "", err
+		}
 	}
 	rel := path.Join(b.Config.Dir, slug+".md")
 	full := filepath.Join(b.Root, filepath.FromSlash(rel))
@@ -40,7 +45,7 @@ func (b *Board) New(title, kind, area string, toNext bool) (string, error) {
 	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 		return "", err
 	}
-	if err := writeAtomic(full, topicFile(title, kind, area), 0o644); err != nil {
+	if err := writeAtomic(full, topicFile(title, kind, area, epic), 0o644); err != nil {
 		return "", err
 	}
 	if toNext {
@@ -133,7 +138,7 @@ func (b *Board) NextMove(slug string, at int) error {
 }
 
 // Remove deletes a topic file and takes it out of Next, returning the paths of
-// the topics that still link to it. It fails on an unknown slug.
+// the topics that still link to it or name it as their epic. It fails on an unknown slug.
 func (b *Board) Remove(slug string) ([]string, error) {
 	t, err := b.requireTopic(slug)
 	if err != nil {
@@ -298,12 +303,17 @@ func (s fileSnapshot) restore() error {
 	return os.Chmod(s.path, s.mode)
 }
 
-// linkedBy returns the paths of the other topics linking to target.
+// linkedBy returns the paths of the other topics linking to target or naming
+// it as their epic.
 func (b *Board) linkedBy(target *Topic) []string {
 	dir := path.Clean(b.Config.Dir)
 	var out []string
 	for _, t := range b.Topics {
 		if t.Slug == target.Slug {
+			continue
+		}
+		if t.Epic() == target.Slug {
+			out = append(out, t.Path)
 			continue
 		}
 		for _, link := range t.Parsed.Links {
@@ -329,9 +339,25 @@ func (b *Board) areaAllowed(area string) bool {
 }
 
 // topicFile is a new topic's bytes: front matter, title, empty Now and Open.
-func topicFile(title, kind, area string) []byte {
-	return []byte("---\nkind: " + kind + "\narea: " + area +
-		"\nstate: open\n---\n\n# " + title + "\n\n**Now:**\n\n**Open:**\n")
+func topicFile(title, kind, area, epic string) []byte {
+	front := "---\nkind: " + kind + "\narea: " + area + "\nstate: open\n"
+	if epic != "" {
+		front += "epic: " + epic + "\n"
+	}
+	return []byte(front + "---\n\n# " + title + "\n\n**Now:**\n\n**Open:**\n")
+}
+
+// epicAllowed reports why slug cannot be a new topic's epic: it must name a
+// topic that names no epic of its own.
+func (b *Board) epicAllowed(slug string) error {
+	t, err := b.requireTopic(slug)
+	if err != nil {
+		return err
+	}
+	if t.Epic() != "" {
+		return fmt.Errorf("topic %q is itself in epic %q", slug, t.Epic())
+	}
+	return nil
 }
 
 // nextText is a topic's Next item content: its link, with the title as text.

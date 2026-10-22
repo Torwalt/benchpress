@@ -49,14 +49,17 @@ type checker struct {
 	dir      string
 	plans    map[string][]string // plan path -> where found
 	topics   map[string]bool     // slug -> loaded
+	epics    map[string]string   // slug -> the epic it names
 	problems []Problem
 }
 
 func (c *checker) run(ctx context.Context) ([]Problem, error) {
 	c.dir = path.Clean(c.board.Config.Dir)
 	c.topics = make(map[string]bool, len(c.board.Topics))
+	c.epics = make(map[string]string, len(c.board.Topics))
 	for _, t := range c.board.Topics {
 		c.topics[t.Slug] = true
+		c.epics[t.Slug] = t.Epic()
 	}
 	if plans := c.board.Plans(); len(plans) > 0 {
 		found, err := c.loc.Find(ctx, plans...)
@@ -90,6 +93,7 @@ func (c *checker) checkTopic(t *board.Topic) {
 		c.add(Error, t.Path, issue.Line, issue.Rule, issue.Message)
 	}
 	c.checkValues(t)
+	c.checkEpic(t)
 	for _, link := range t.Parsed.Links {
 		c.checkLink(t.Path, link)
 	}
@@ -128,6 +132,23 @@ func (c *checker) checkValues(t *board.Topic) {
 		c.add(Error, t.Path, plan.Line, "plan-unexpected", "plan is set but the state is not planned")
 	case state.Value == "planned" && len(c.plans[planPath]) == 0:
 		c.add(Error, t.Path, plan.Line, "plan-gone", fmt.Sprintf("plan %q is not in the working tree or on any local branch", planPath))
+	}
+}
+
+// checkEpic reports an epic that names no topic, the topic itself, or a topic
+// that is in an epic of its own: epics are one level deep.
+func (c *checker) checkEpic(t *board.Topic) {
+	f, ok := t.Parsed.Field("epic")
+	if !ok {
+		return
+	}
+	switch {
+	case f.Value == t.Slug:
+		c.add(Error, t.Path, f.Line, "epic", "topic names itself as its epic")
+	case !c.topics[f.Value]:
+		c.add(Error, t.Path, f.Line, "epic", fmt.Sprintf("epic %q names no topic", f.Value))
+	case c.epics[f.Value] != "":
+		c.add(Error, t.Path, f.Line, "epic", fmt.Sprintf("epic %q is itself in epic %q", f.Value, c.epics[f.Value]))
 	}
 }
 

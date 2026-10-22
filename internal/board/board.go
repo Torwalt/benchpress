@@ -36,6 +36,9 @@ func (t *Topic) State() string { return t.field("state") }
 // Plan is the topic's plan path, or "" when it is missing.
 func (t *Topic) Plan() string { return t.field("plan") }
 
+// Epic is the slug of the epic the topic belongs to, or "" when it has none.
+func (t *Topic) Epic() string { return t.field("epic") }
+
 // Title is the topic's level-one heading, or "" when it has none.
 func (t *Topic) Title() string { return t.Parsed.Title }
 
@@ -152,6 +155,8 @@ type Entry struct {
 	Area      string
 	State     string
 	Plan      string
+	Epic      string   // the epic the topic names, as written
+	Under     string   // the epic it is listed under, or "" at the top level
 	PlanFound []string // where the plan was found, for a planned topic
 	Issue     *topic.Issue
 }
@@ -162,11 +167,15 @@ func (e Entry) Broken() bool { return e.Issue != nil }
 // Listing returns the ls view: the slugs of the Next items shown, in order,
 // then every shown topic in display order — Next first, then other topics by
 // area (configured order, then alphabetical), state (open, settled, planned)
-// and title. planFound maps each plan path to the places it was found.
+// and title. A shown sub-topic that is not in Next follows its epic wherever
+// the epic is listed, when the epic is shown and is not a sub-topic itself.
+// planFound maps each plan path to the places it was found.
 func (b *Board) Listing(f Filter, planFound map[string][]string) ([]string, []Entry) {
 	bySlug := make(map[string]*Topic, len(b.Topics))
+	shown := make(map[string]bool, len(b.Topics))
 	for _, t := range b.Topics {
 		bySlug[t.Slug] = t
+		shown[t.Slug] = f.match(t)
 	}
 
 	nextSlugs := []string{}
@@ -176,31 +185,80 @@ func (b *Board) Listing(f Filter, planFound map[string][]string) ([]string, []En
 		if slug == "" || inNext[slug] {
 			continue
 		}
-		t, ok := bySlug[slug]
-		if !ok || !f.match(t) {
+		if _, ok := bySlug[slug]; !ok || !shown[slug] {
 			continue
 		}
 		inNext[slug] = true
 		nextSlugs = append(nextSlugs, slug)
 	}
 
+	subTopics := make(map[string][]*Topic)
+	nested := make(map[string]bool)
+	for _, t := range b.Topics {
+		if !shown[t.Slug] || inNext[t.Slug] {
+			continue
+		}
+		epic := b.listedEpic(t, bySlug)
+		if epic == "" || !shown[epic] {
+			continue
+		}
+		subTopics[epic] = append(subTopics[epic], t)
+		nested[t.Slug] = true
+	}
+	for _, subs := range subTopics {
+		sort.SliceStable(subs, func(i, j int) bool { return subLess(subs[i], subs[j]) })
+	}
+
 	var rest []*Topic
 	for _, t := range b.Topics {
-		if inNext[t.Slug] || !f.match(t) {
+		if inNext[t.Slug] || nested[t.Slug] || !shown[t.Slug] {
 			continue
 		}
 		rest = append(rest, t)
 	}
 	sort.SliceStable(rest, func(i, j int) bool { return b.less(rest[i], rest[j]) })
 
-	entries := make([]Entry, 0, len(nextSlugs)+len(rest))
+	entries := make([]Entry, 0, len(b.Topics))
+	add := func(t *Topic) {
+		entries = append(entries, b.entry(t, planFound))
+		for _, sub := range subTopics[t.Slug] {
+			e := b.entry(sub, planFound)
+			e.Under = t.Slug
+			entries = append(entries, e)
+		}
+	}
 	for _, slug := range nextSlugs {
-		entries = append(entries, b.entry(bySlug[slug], planFound))
+		add(bySlug[slug])
 	}
 	for _, t := range rest {
-		entries = append(entries, b.entry(t, planFound))
+		add(t)
 	}
 	return nextSlugs, entries
+}
+
+// listedEpic is the epic t is listed under: the topic its epic names, when
+// that is another topic which names no epic of its own, or "".
+func (b *Board) listedEpic(t *Topic, bySlug map[string]*Topic) string {
+	slug := t.Epic()
+	if slug == "" || slug == t.Slug {
+		return ""
+	}
+	epic, ok := bySlug[slug]
+	if !ok || epic.Epic() != "" {
+		return ""
+	}
+	return slug
+}
+
+// subLess orders the sub-topics of one epic by state, title and slug.
+func subLess(a, c *Topic) bool {
+	if sa, sc := stateRank(a.State()), stateRank(c.State()); sa != sc {
+		return sa < sc
+	}
+	if a.Title() != c.Title() {
+		return a.Title() < c.Title()
+	}
+	return a.Slug < c.Slug
 }
 
 // Exists reports whether a repository-relative path is in the working tree.
@@ -237,6 +295,7 @@ func (b *Board) entry(t *Topic, planFound map[string][]string) Entry {
 		Area:  t.Area(),
 		State: t.State(),
 		Plan:  t.Plan(),
+		Epic:  t.Epic(),
 	}
 	if issue, ok := t.FirstIssue(); ok {
 		e.Issue = &issue

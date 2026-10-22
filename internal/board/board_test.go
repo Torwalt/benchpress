@@ -338,3 +338,48 @@ func TestListingAreasAlphabeticalWhenUnconfigured(t *testing.T) {
 		t.Errorf("order = %v, want a then z", got)
 	}
 }
+
+func epicTopic(kind, area, state, epic, title string) string {
+	return "---\nkind: " + kind + "\narea: " + area + "\nstate: " + state + "\nepic: " + epic + "\n---\n\n# " + title + "\n"
+}
+
+func TestListingEpics(t *testing.T) {
+	b := loadFixture(t, map[string]string{
+		"summoner.md":   topicBody("design", "maps", "open", "The Summoner"),
+		"juice.md":      epicTopic("change", "economy", "open", "summoner", "Hits have no weight"),
+		"economy.md":    epicTopic("design", "economy", "settled", "summoner", "A Summoner economy"),
+		"model.md":      epicTopic("change", "maps", "open", "summoner", "A Summoner model"),
+		"lab.md":        epicTopic("change", "maps", "open", "summoner", "A laboratory"),
+		"roads.md":      topicBody("design", "economy", "open", "Roads"),
+		"orphan.md":     epicTopic("bug", "economy", "open", "gone", "An orphan"),
+		"grandchild.md": epicTopic("bug", "economy", "open", "juice", "A grandchild"),
+	}, "# Next\n\n1. [The Summoner](summoner.md)\n2. [A laboratory](lab.md)\n")
+
+	nextSlugs, entries := b.Listing(Filter{}, nil)
+	if want := []string{"summoner", "lab"}; !reflect.DeepEqual(nextSlugs, want) {
+		t.Errorf("next = %v, want %v", nextSlugs, want)
+	}
+	want := []string{"summoner", "model", "juice", "economy", "lab", "grandchild", "orphan", "roads"}
+	if got := slugs(entries); !reflect.DeepEqual(got, want) {
+		t.Fatalf("order = %v, want %v", got, want)
+	}
+	under := map[string]string{"model": "summoner", "juice": "summoner", "economy": "summoner"}
+	for _, e := range entries {
+		if e.Under != under[e.Slug] {
+			t.Errorf("%s under %q, want %q", e.Slug, e.Under, under[e.Slug])
+		}
+	}
+	if entries[1].Epic != "summoner" {
+		t.Errorf("model epic = %q, want summoner", entries[1].Epic)
+	}
+
+	_, entries = b.Listing(Filter{Areas: []string{"economy"}}, nil)
+	if want := []string{"grandchild", "orphan", "juice", "roads", "economy"}; !reflect.DeepEqual(slugs(entries), want) {
+		t.Errorf("filtered order = %v, want %v", slugs(entries), want)
+	}
+	for _, e := range entries {
+		if e.Under != "" {
+			t.Errorf("%s under %q with its epic filtered out", e.Slug, e.Under)
+		}
+	}
+}

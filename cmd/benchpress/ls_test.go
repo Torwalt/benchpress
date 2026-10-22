@@ -374,3 +374,37 @@ func TestLSJSON(t *testing.T) {
 		t.Errorf("broken entry = %+v", bad)
 	}
 }
+
+func TestLSEpics(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("GIT_CEILING_DIRECTORIES", filepath.Dir(root))
+	writeFile(t, root, ".benchpress.toml", "dir = \"work\"\nareas = [\"economy\", \"maps\"]\n")
+	writeFile(t, root, "work/NEXT.md", "# Next\n\n1. [The Summoner](summoner.md)\n")
+	writeFile(t, root, "work/summoner.md", "---\nkind: design\narea: maps\nstate: open\n---\n\n# The Summoner\n")
+	writeFile(t, root, "work/juice.md",
+		"---\nkind: change\narea: economy\nstate: open\nepic: summoner\n---\n\n# Hits have no weight\n")
+	writeFile(t, root, "work/roads.md", "---\nkind: design\narea: economy\nstate: open\n---\n\n# Roads\n")
+
+	out, err := runLS(t, root)
+	if err != nil {
+		t.Fatalf("ls: %v\n%s", err, out)
+	}
+	want := "Next\n" +
+		"  summoner  open  design  The Summoner\n" +
+		"    juice  open  change  Hits have no weight\n" +
+		"\n" +
+		"economy\n" +
+		"  roads  open  design  Roads\n"
+	if out != want {
+		t.Errorf("ls =\n%s\nwant\n%s", out, want)
+	}
+
+	out, err = runLS(t, root, "--json")
+	if err != nil {
+		t.Fatalf("ls --json: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, `"epic": "summoner"`) {
+		t.Errorf("json missing the epic:\n%s", out)
+	}
+}

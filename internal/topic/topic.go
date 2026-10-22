@@ -13,7 +13,7 @@ import (
 var ErrNoFrontMatter = errors.New("no front matter")
 
 // knownKeys are the front-matter keys of docs/DESIGN.md §3.
-var knownKeys = map[string]bool{"kind": true, "area": true, "state": true, "plan": true}
+var knownKeys = map[string]bool{"kind": true, "area": true, "state": true, "plan": true, "epic": true}
 
 // Field is one front-matter line.
 type Field struct {

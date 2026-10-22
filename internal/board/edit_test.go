@@ -23,7 +23,7 @@ func readFile(t *testing.T, root, rel string) string {
 
 func TestNew(t *testing.T) {
 	b := loadFixture(t, nil, "")
-	rel, err := b.New("A graphics preset!", "idea", "economy", false)
+	rel, err := b.New("A graphics preset!", "idea", "economy", "", false)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestNew(t *testing.T) {
 
 func TestNewNext(t *testing.T) {
 	b := loadFixture(t, nil, "")
-	if _, err := b.New("A graphics preset", "idea", "economy", true); err != nil {
+	if _, err := b.New("A graphics preset", "idea", "economy", "", true); err != nil {
 		t.Fatalf("New: %v", err)
 	}
 	want := "# Next\n\n1. [A graphics preset](a-graphics-preset.md)\n"
@@ -62,7 +62,7 @@ func TestNextTitleEscaping(t *testing.T) {
 			b := loadFixture(t, map[string]string{
 				"c.md": topicBody("bug", "maps", "open", "C"),
 			}, "# Next\n\n")
-			if _, err := b.New(c.title, "bug", "maps", true); err != nil {
+			if _, err := b.New(c.title, "bug", "maps", "", true); err != nil {
 				t.Fatalf("New: %v", err)
 			}
 			body := readFile(t, b.Root, "docs/workbench/"+c.slug+".md")
@@ -118,7 +118,7 @@ func TestNewFailures(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if _, err := b.New(c.title, c.kind, c.area, false); err == nil {
+			if _, err := b.New(c.title, c.kind, c.area, "", false); err == nil {
 				t.Fatalf("New(%q, %q, %q) succeeded, want error", c.title, c.kind, c.area)
 			}
 		})
@@ -395,7 +395,7 @@ func TestNewNextWriteFailureRollsBack(t *testing.T) {
 
 	b.writeNextFile = func(string, []byte, fs.FileMode) error { return errNextWrite }
 
-	if _, err := b.New("A graphics preset", "idea", "economy", true); !errors.Is(err, errNextWrite) {
+	if _, err := b.New("A graphics preset", "idea", "economy", "", true); !errors.Is(err, errNextWrite) {
 		t.Fatalf("New error = %v, want %v", err, errNextWrite)
 	}
 	assertFile(t, topicPath, beforeTopic)
@@ -405,7 +405,7 @@ func TestNewNextWriteFailureRollsBack(t *testing.T) {
 	}
 
 	b.writeNextFile = nil
-	if _, err := b.New("A graphics preset", "idea", "economy", true); err != nil {
+	if _, err := b.New("A graphics preset", "idea", "economy", "", true); err != nil {
 		t.Fatalf("retry New: %v", err)
 	}
 	if _, err := os.Stat(topicPath); err != nil {
@@ -458,5 +458,39 @@ func TestRemoveNextWriteFailureRollsBack(t *testing.T) {
 	}
 	if got, want := readFile(t, b.Root, "docs/workbench/NEXT.md"), "# Next\n\n"; got != want {
 		t.Errorf("NEXT.md after retry = %q, want %q", got, want)
+	}
+}
+
+func TestNewWithEpic(t *testing.T) {
+	b := loadFixture(t, map[string]string{
+		"summoner.md": topicBody("design", "maps", "open", "The Summoner"),
+		"juice.md":    "---\nkind: change\narea: maps\nstate: open\nepic: summoner\n---\n\n# Juice\n",
+	}, "")
+	rel, err := b.New("A Summoner model", "change", "maps", "summoner", false)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	want := "---\nkind: change\narea: maps\nstate: open\nepic: summoner\n---\n\n# A Summoner model\n\n**Now:**\n\n**Open:**\n"
+	if got := readFile(t, b.Root, rel); got != want {
+		t.Errorf("file =\n%q\nwant\n%q", got, want)
+	}
+	for _, epic := range []string{"nope", "juice"} {
+		if _, err := b.New("Another "+epic, "change", "maps", epic, false); err == nil {
+			t.Errorf("New with epic %q succeeded, want error", epic)
+		}
+	}
+}
+
+func TestRemoveReportsSubTopics(t *testing.T) {
+	b := loadFixture(t, map[string]string{
+		"summoner.md": topicBody("design", "maps", "open", "The Summoner"),
+		"juice.md":    "---\nkind: change\narea: maps\nstate: open\nepic: summoner\n---\n\n# Juice\n",
+	}, "")
+	linked, err := b.Remove("summoner")
+	if err != nil {
+		t.Fatalf("Remove: %v", err)
+	}
+	if want := []string{"docs/workbench/juice.md"}; !reflect.DeepEqual(linked, want) {
+		t.Errorf("linked = %v, want %v", linked, want)
 	}
 }

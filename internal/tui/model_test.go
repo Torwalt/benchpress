@@ -629,3 +629,45 @@ func TestFilterBackspaceRune(t *testing.T) {
 		t.Errorf("filter is not valid UTF-8: %q", m.filter)
 	}
 }
+
+func TestSubTopicsFollowTheirEpic(t *testing.T) {
+	root := t.TempDir()
+	writeTopic(t, root, "summoner.md", topicText("design", "maps", "open", "The Summoner"))
+	writeTopic(t, root, "juice.md", "---\nkind: change\narea: economy\nstate: settled\nepic: summoner\n---\n\n# Hits have no weight\n")
+	writeTopic(t, root, "roads.md", topicText("design", "economy", "open", "Roads"))
+	writeTopic(t, root, "NEXT.md", "# Next\n")
+	writeConfig(t, root, "docs/workbench", []string{"bug", "change", "design", "idea"}, []string{"economy", "maps"})
+	b, err := board.Load(root, loadConfig(t, root))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	m := newTestModel(t, Options{Board: b})
+
+	rowSlugs := func() []string {
+		var out []string
+		for _, r := range m.rows {
+			if r.kind == rowGroup {
+				out = append(out, "["+r.label+"]")
+			} else {
+				out = append(out, r.entry.Slug)
+			}
+		}
+		return out
+	}
+	if got, want := rowSlugs(), []string{"[economy]", "roads", "[maps]", "summoner", "juice"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("area rows = %v, want %v", got, want)
+	}
+	if !strings.Contains(plainView(m.View()), "    ◆ change  Hits have no weight") {
+		t.Errorf("sub-topic is not indented:\n%s", plainView(m.View()))
+	}
+	pressType(m, tea.KeyTab)
+	if got, want := rowSlugs(), []string{"[open]", "roads", "summoner", "juice"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("state rows = %v, want %v", got, want)
+	}
+
+	pressRune(m, '/')
+	typeText(m, "hits")
+	if got, want := rowSlugs(), []string{"[settled]", "juice"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("filtered rows = %v, want %v", got, want)
+	}
+}

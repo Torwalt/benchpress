@@ -78,7 +78,7 @@ plan: docs/plans/PLAYTEST_FIXES.md
 
 **Front matter.** The file's first line is `---`, and the front matter ends at
 the next line that is exactly `---`. Every line between is `key: value`: the key
-is one of the four below, followed by a colon and one space; the value runs to
+is one of the five below, followed by a colon and one space; the value runs to
 the end of the line, trimmed, unquoted. No comments, no blank lines, no nesting,
 no YAML beyond this. benchpress parses it by hand.
 
@@ -88,10 +88,18 @@ no YAML beyond this. benchpress parses it by hand.
 | `area` | yes | one of the configured areas, or any slug when none are configured |
 | `state` | yes | `open`, `settled` or `planned` |
 | `plan` | only when `state: planned` | a repository-relative path to the pass's plan file |
+| `epic` | no | the slug of the topic this one is a sub-topic of |
 
 **States.** `open` — still being discussed. `settled` — decided, waiting for a
 pass to take it. `planned` — a pass's plan has taken it. There is no done: a
 finished or dropped topic is deleted, and git keeps it.
+
+**Epics.** An epic is an ordinary topic that other topics name in `epic`; it
+has no key or state of its own. Epics are one level deep: a topic that names an
+epic cannot itself be named as one. A sub-topic keeps its own kind, area and
+state, so an epic can gather topics from several areas, and it may sit in Next
+by itself. Deleting an epic leaves its sub-topics naming a missing topic, which
+lint reports.
 
 **Title.** The first non-blank line after the front matter is a level-one
 heading, `# Title`, and it is the topic's only level-one heading. A level-one
@@ -177,7 +185,7 @@ Errors:
 | --- | --- |
 | `slug` | a topic's file name is not a slug |
 | `front-matter` | the file does not start with `---`, the front matter is not closed, or a line in it is not `key: value` |
-| `unknown-key` | a key other than `kind`, `area`, `state`, `plan` |
+| `unknown-key` | a key other than `kind`, `area`, `state`, `plan`, `epic` |
 | `duplicate-key` | a key appears twice |
 | `missing-key` | `kind`, `area` or `state` is missing |
 | `kind` | the kind is not configured |
@@ -186,6 +194,7 @@ Errors:
 | `plan-missing` | `state: planned` without `plan` |
 | `plan-unexpected` | `plan` on a topic whose state is not `planned` |
 | `plan-gone` | the plan is found neither in the working tree nor on any local branch: its pass has probably closed, so delete the topic or change its state |
+| `epic` | the epic names no topic, names the topic itself, or names a topic that names an epic of its own |
 | `title` | no level-one heading as the first content, a level-one heading with no text, or more than one |
 | `next-item` | a Next item does not begin with a link to an existing topic |
 | `next-duplicate` | a topic appears twice in Next |
@@ -209,13 +218,13 @@ errors as `benchpress: message` with exit code 1.
 | command | does |
 | --- | --- |
 | `init` | creates `.benchpress.toml` with the defaults, `dir` with `NEXT.md`, and the skill at `.agents/skills/benchpress/SKILL.md`; when `.claude/skills/` exists, also the symlink `.claude/skills/benchpress → ../../.agents/skills/benchpress`. Never overwrites an existing file; `--skill` rewrites the skill from the binary. Prints what it created. |
-| `ls` | the Next items in order, then every other topic grouped by area (configured order, then alphabetical) and within an area by state (`open`, `settled`, `planned`) and then title. One line per topic: slug, state, kind, title, and for a planned topic its plan and where it was found. `--state`, `--kind`, `--area` filter, and each may be repeated. `--json` prints `{"next": [slug…], "topics": [{"slug", "path", "title", "kind", "area", "state", "plan", "plan_found": ["worktree" or a branch name…]}]}`, topics in the same order as the text. A topic that does not parse is listed, not skipped: by slug with its first parse error in the text, and with whichever of the JSON fields did parse. |
-| `new <title> --kind K --area A` | creates `<slug>.md` from the title (lower case; every run of characters outside `a-z0-9` becomes one hyphen; leading and trailing hyphens dropped), with state `open`, the title and the empty body sections `**Now:**` and `**Open:**`. Fails if the file exists or the kind or area is not allowed. Prints the path. `--next` also appends it to Next. |
+| `ls` | the Next items in order, then every other topic grouped by area (configured order, then alphabetical) and within an area by state (`open`, `settled`, `planned`) and then title. A sub-topic not in Next is listed right after its epic, wherever the epic is listed and whatever its own area, indented one step and ordered by state and title; when its epic is not listed — filtered out, missing, or not a valid epic — it is listed as any other topic. One line per topic: slug, state, kind, title, and for a planned topic its plan and where it was found. `--state`, `--kind`, `--area` filter, and each may be repeated. `--json` prints `{"next": [slug…], "topics": [{"slug", "path", "title", "kind", "area", "state", "plan", "epic", "plan_found": ["worktree" or a branch name…]}]}`, topics in the same order as the text. A topic that does not parse is listed, not skipped: by slug with its first parse error in the text, and with whichever of the JSON fields did parse. |
+| `new <title> --kind K --area A` | creates `<slug>.md` from the title (lower case; every run of characters outside `a-z0-9` becomes one hyphen; leading and trailing hyphens dropped), with state `open`, the title and the empty body sections `**Now:**` and `**Open:**`. Fails if the file exists or the kind or area is not allowed. Prints the path. `--next` also appends it to Next. `--epic E` writes `epic: E`, and fails unless `E` is a topic that names no epic of its own. |
 | `state <slug> <state> [--plan PATH]` | sets the state. `planned` requires `--plan`; any other state removes `plan`. |
 | `next add <slug> [--at N]` | adds the topic to Next, at the end or at position N (1-based). |
 | `next rm <slug>` | removes it from Next. |
 | `next mv <slug> <N>` | moves it to position N. |
-| `rm <slug>` | deletes the topic file, removes it from Next, and prints the topics that still link to it. |
+| `rm <slug>` | deletes the topic file, removes it from Next, and prints the topics that still link to it or name it as their epic. |
 | `lint [--json]` | §6. |
 | `skill` | prints the embedded skill. |
 
@@ -235,7 +244,9 @@ A full-screen terminal view, `benchpress` alone.
 
 **Layout.** Two panes side by side. The left is the list: a *Next* section with
 its items numbered, then the other topics grouped as `ls` groups them, each
-group under its name. A row shows a state mark (`○` open, `◆` settled, `▶`
+group under its name. Sub-topics follow their epic as `ls` lists them, indented,
+in whichever grouping the epic falls; a text filter that hides the epic shows a
+matching sub-topic in its own group. A row shows a state mark (`○` open, `◆` settled, `▶`
 planned), the kind, the title, and for a planned topic the branch its plan is on
 when it is not in the working tree. The right pane shows the selected topic's
 body rendered as Markdown, front matter left out. A status line at the bottom

@@ -10,6 +10,7 @@ func newNewCmd() *cobra.Command {
 	var (
 		kind   string
 		area   string
+		epic   string
 		toNext bool
 	)
 	cmd := &cobra.Command{
@@ -21,7 +22,7 @@ func newNewCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			path, err := b.New(args[0], kind, area, toNext)
+			path, err := b.New(args[0], kind, area, epic, toNext)
 			if err != nil {
 				return err
 			}
@@ -31,6 +32,7 @@ func newNewCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&kind, "kind", "", "the topic's kind (required)")
 	cmd.Flags().StringVar(&area, "area", "", "the topic's area (required)")
+	cmd.Flags().StringVar(&epic, "epic", "", "the slug of the epic the topic belongs to")
 	cmd.Flags().BoolVar(&toNext, "next", false, "also append the topic to Next")
 	_ = cmd.MarkFlagRequired("kind")
 	_ = cmd.MarkFlagRequired("area")
